@@ -9,7 +9,7 @@ import {
   File, 
   FileImage, 
   FileSpreadsheet,
-  FilePdf 
+  FileType
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,7 +73,7 @@ export default function DocumentsPage() {
     } else if (mimeType.includes("spreadsheet") || mimeType.includes("excel") || mimeType.endsWith("csv")) {
       return <FileSpreadsheet className="h-6 w-6 text-green-500" />;
     } else if (mimeType.includes("pdf")) {
-      return <FilePdf className="h-6 w-6 text-red-500" />;
+      return <FileType className="h-6 w-6 text-red-500" />;
     } else {
       return <File className="h-6 w-6 text-gray-500" />;
     }

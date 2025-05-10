@@ -1,16 +1,36 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { ChevronLeft, Download, Edit, FileText, Printer, Send, Copy } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Edit,
+  Clock,
+  CalendarIcon,
+  ClipboardCheck,
+  Paperclip,
+  FileText,
+  Copy,
+  Send,
+  Package,
+  User,
+  Building,
+  Mail,
+  Phone,
+  Globe,
+  MapPin,
+  Tag,
+  Plus,
+  X
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface QuotationDetailsPageProps {
   id: string;
@@ -18,535 +38,424 @@ interface QuotationDetailsPageProps {
 
 export default function QuotationDetailsPage({ id }: QuotationDetailsPageProps) {
   const [, navigate] = useLocation();
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("overview");
 
-  // Get quotation
-  const { data: quotation, isLoading, error } = useQuery({
-    queryKey: ["/api/quotations", id],
-    queryFn: () => apiRequest("GET", `/api/quotations/${id}`).then((res) => res.json()),
+  // Get quotation details
+  const { data: quotation, isLoading: loadingQuotation } = useQuery({
+    queryKey: [`/api/quotations/${id}`],
+    queryFn: () => apiRequest("GET", `/api/quotations/${id}`).then(res => res.json()),
   });
 
   // Get quotation items
   const { data: items, isLoading: loadingItems } = useQuery({
-    queryKey: ["/api/quotations", id, "items"],
-    queryFn: () => apiRequest("GET", `/api/quotations/${id}/items`).then((res) => res.json()),
-    enabled: !!quotation,
-  });
-
-  // Get quotation terms
-  const { data: terms, isLoading: loadingTerms } = useQuery({
-    queryKey: ["/api/quotations", id, "terms"],
-    queryFn: () => apiRequest("GET", `/api/quotations/${id}/terms`).then((res) => res.json()),
-    enabled: !!quotation,
+    queryKey: [`/api/quotations/${id}/items`],
+    queryFn: () => apiRequest("GET", `/api/quotations/${id}/items`).then(res => res.json()),
   });
 
   // Get quotation documents
   const { data: documents, isLoading: loadingDocuments } = useQuery({
-    queryKey: ["/api/quotations", id, "documents"],
-    queryFn: () => apiRequest("GET", `/api/quotations/${id}/documents`).then((res) => res.json()),
-    enabled: !!quotation,
+    queryKey: [`/api/quotations/${id}/documents`],
+    queryFn: () => apiRequest("GET", `/api/quotations/${id}/documents`).then(res => res.json()),
   });
 
-  // Function to get status badge
+  // Get quotation terms
+  const { data: terms, isLoading: loadingTerms } = useQuery({
+    queryKey: [`/api/quotations/${id}/terms`],
+    queryFn: () => apiRequest("GET", `/api/quotations/${id}/terms`).then(res => res.json()),
+  });
+
+  // Format currency
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
+
+  // Get status badge variant
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return <Badge variant="outline">Draft</Badge>;
+        return { variant: "outline" as const, label: "Draft" };
       case "sent":
-        return <Badge variant="secondary">Sent</Badge>;
+        return { variant: "secondary" as const, label: "Sent" };
       case "accepted":
-        return <Badge variant="success">Accepted</Badge>;
+        return { variant: "default" as const, label: "Accepted" };
       case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
-      case "expired":
-        return <Badge variant="muted">Expired</Badge>;
+        return { variant: "destructive" as const, label: "Rejected" };
       default:
-        return <Badge>{status}</Badge>;
+        return { variant: "outline" as const, label: "Unknown" };
     }
   };
 
-  const handleGeneratePdf = async () => {
-    try {
-      const response = await apiRequest(
-        "POST",
-        `/api/quotations/${id}/generate-pdf`
-      );
-      const data = await response.json();
-      
-      if (data.pdfUrl) {
-        window.open(data.pdfUrl, "_blank");
-      }
-      
-      toast({
-        title: "Success",
-        description: "PDF generated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate PDF",
-        variant: "destructive",
-      });
-    }
-  };
+  // Loading state
+  if (loadingQuotation) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="flex items-center mb-6">
+          <Button variant="ghost" size="icon" className="mr-2" onClick={() => navigate("/quotations")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <Skeleton className="h-8 w-60" />
+        </div>
+        <div className="space-y-6">
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-80 w-full" />
+        </div>
+      </div>
+    );
+  }
 
-  const handleConvertToInvoice = async () => {
-    try {
-      const response = await apiRequest(
-        "POST",
-        `/api/quotations/${id}/convert-to-invoice`
-      );
-      const data = await response.json();
-      
-      toast({
-        title: "Success",
-        description: "Quotation converted to invoice successfully",
-      });
-      
-      navigate(`/invoices/${data.id}`);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to convert quotation to invoice",
-        variant: "destructive",
-      });
-    }
-  };
+  // Handle 404
+  if (!quotation) {
+    return (
+      <div className="container mx-auto py-8 text-center">
+        <h1 className="text-3xl font-bold mb-4">Quotation Not Found</h1>
+        <p className="text-muted-foreground mb-6">The quotation you're looking for doesn't exist or has been deleted.</p>
+        <Button onClick={() => navigate("/quotations")}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Quotations
+        </Button>
+      </div>
+    );
+  }
+
+  const statusBadge = getStatusBadge(quotation.status);
 
   return (
     <div className="container mx-auto py-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div className="flex items-center">
-          <Link href="/quotations">
-            <Button variant="ghost" className="mr-4">
-              <ChevronLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-          </Link>
-          <div>
-            {isLoading ? (
-              <Skeleton className="h-8 w-64" />
-            ) : (
-              <div className="flex items-center">
-                <h1 className="text-3xl font-bold mr-3">
-                  {quotation?.quoteNumber || "Quotation"}
-                </h1>
-                {quotation && getStatusBadge(quotation.status)}
-              </div>
-            )}
-          </div>
+          <Button variant="ghost" size="icon" className="mr-2" onClick={() => navigate("/quotations")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-3xl font-bold">{quotation.title}</h1>
+          <Badge variant={statusBadge.variant} className="ml-4">
+            {statusBadge.label}
+          </Badge>
         </div>
-        
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={handleGeneratePdf}>
-            <Download className="mr-2 h-4 w-4" />
-            Download PDF
-          </Button>
-          <Button variant="outline" onClick={handleConvertToInvoice}>
-            <Copy className="mr-2 h-4 w-4" />
-            Convert to Invoice
-          </Button>
-          <Link href={`/quotations/${id}/edit`}>
-            <Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/quotations/${id}/edit`}>
               <Edit className="mr-2 h-4 w-4" />
               Edit
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <a href={`/api/quotations/${id}/pdf`} target="_blank" rel="noopener noreferrer">
+              <Download className="mr-2 h-4 w-4" />
+              Download PDF
+            </a>
+          </Button>
+          {quotation.status === "draft" && (
+            <Button>
+              <Send className="mr-2 h-4 w-4" />
+              Send to Client
             </Button>
-          </Link>
+          )}
         </div>
       </div>
 
-      {isLoading ? (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Package className="mr-2 h-5 w-5" />
+                Items & Services
+              </CardTitle>
+              <CardDescription>
+                Products and services included in this quotation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingItems ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex justify-between">
+                      <Skeleton className="h-6 w-60" />
+                      <Skeleton className="h-6 w-20" />
+                    </div>
+                  ))}
+                </div>
+              ) : !items || items.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  No items added to this quotation yet.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead className="text-right">Unit Price</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{item.name}</div>
+                            {item.description && (
+                              <div className="text-sm text-muted-foreground line-clamp-2">
+                                {item.description}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.quantity} {item.unit}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.unitPrice)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.totalPrice)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-right font-medium">Subtotal</TableCell>
+                      <TableCell className="text-right">{formatCurrency(quotation.subtotalAmount || 0)}</TableCell>
+                    </TableRow>
+                    {quotation.taxAmount > 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-right font-medium">Tax ({quotation.taxRate || 0}%)</TableCell>
+                        <TableCell className="text-right">{formatCurrency(quotation.taxAmount || 0)}</TableCell>
+                      </TableRow>
+                    )}
+                    {quotation.discountAmount > 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-right font-medium">Discount</TableCell>
+                        <TableCell className="text-right">-{formatCurrency(quotation.discountAmount || 0)}</TableCell>
+                      </TableRow>
+                    )}
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-right font-medium">Total</TableCell>
+                      <TableCell className="text-right text-lg">{formatCurrency(quotation.totalAmount || 0)}</TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          <Tabs defaultValue="terms" className="w-full">
+            <TabsList>
+              <TabsTrigger value="terms" className="flex items-center">
+                <ClipboardCheck className="mr-2 h-4 w-4" />
+                Terms & Conditions
+              </TabsTrigger>
+              <TabsTrigger value="documents" className="flex items-center">
+                <Paperclip className="mr-2 h-4 w-4" />
+                Documents
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="terms">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Terms & Conditions</CardTitle>
+                  <CardDescription>
+                    Terms and conditions applied to this quotation
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingTerms ? (
+                    <div className="space-y-4">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={i} className="h-24 w-full" />
+                      ))}
+                    </div>
+                  ) : !terms || terms.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-2 opacity-25" />
+                      <p>No terms and conditions have been added to this quotation.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {terms.map((term) => (
+                        <div key={term.id} className="border rounded-lg p-4">
+                          <h3 className="text-lg font-medium mb-2">{term.title}</h3>
+                          <div className="whitespace-pre-wrap text-sm">
+                            {term.content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="documents">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Attached Documents</CardTitle>
+                  <CardDescription>
+                    Documents attached to this quotation
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingDocuments ? (
+                    <div className="space-y-4">
+                      {Array.from({ length: 2 }).map((_, i) => (
+                        <div key={i} className="flex justify-between">
+                          <Skeleton className="h-10 w-60" />
+                          <Skeleton className="h-10 w-20" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : !documents || documents.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <Paperclip className="h-12 w-12 mx-auto mb-2 opacity-25" />
+                      <p>No documents have been attached to this quotation.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {documents.map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center">
+                            <div className="p-2 mr-2 bg-muted rounded">
+                              <FileText className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <div className="font-medium">{doc.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatFileSize(doc.fileSize)}
+                              </div>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="icon" asChild>
+                            <a href={`/api/documents/${doc.documentId}/download`} target="_blank" rel="noopener noreferrer">
+                              <Download className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+
         <div className="space-y-6">
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      ) : error ? (
-        <div className="text-center py-8 text-red-500">
-          Error loading quotation. Please try again.
-        </div>
-      ) : (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="materials">Materials & Services</TabsTrigger>
-            <TabsTrigger value="terms">Terms & Conditions</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Quotation Information</CardTitle>
-                  <CardDescription>
-                    Overview of quotation details
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Quotation Number</h3>
-                        <p className="mt-1">{quotation?.quoteNumber}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-                        <p className="mt-1">{getStatusBadge(quotation?.status)}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Date</h3>
-                        <p className="mt-1">
-                          {quotation?.quoteDate
-                            ? format(new Date(quotation.quoteDate), "MMMM d, yyyy")
-                            : "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Valid Until</h3>
-                        <p className="mt-1">
-                          {quotation?.validUntil
-                            ? format(new Date(quotation.validUntil), "MMMM d, yyyy")
-                            : "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Currency</h3>
-                        <p className="mt-1">{quotation?.currency}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Discount</h3>
-                        <p className="mt-1">{quotation?.discount ? `${quotation.discount}%` : "0%"}</p>
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Notes</h3>
-                      <p className="mt-1">{quotation?.notes || "No notes provided"}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Summary</CardTitle>
-                  <CardDescription>
-                    Financial summary of quotation
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span>
-                        {new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: quotation?.currency || "USD",
-                        }).format(quotation?.subtotal || 0)}
-                      </span>
-                    </div>
-                    
-                    {quotation?.discount && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Discount ({quotation.discount}%)</span>
-                        <span>
-                          {new Intl.NumberFormat("en-US", {
-                            style: "currency",
-                            currency: quotation?.currency || "USD",
-                          }).format(
-                            ((quotation?.subtotal || 0) * (parseInt(quotation.discount) / 100)) * -1
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tax</span>
-                      <span>
-                        {new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: quotation?.currency || "USD",
-                        }).format(quotation?.tax || 0)}
-                      </span>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="flex justify-between font-bold">
-                      <span>Total</span>
-                      <span>
-                        {new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: quotation?.currency || "USD",
-                        }).format(quotation?.total || 0)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Client Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loadingItems ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-4 w-64" />
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <p className="font-medium">{quotation?.client?.name}</p>
-                      <p>{quotation?.client?.contactName}</p>
-                      <p>{quotation?.client?.email}</p>
-                      <p>{quotation?.client?.phone}</p>
-                      <p>{quotation?.client?.address}</p>
-                      {quotation?.client?.city && (
-                        <p>
-                          {quotation.client.city}
-                          {quotation.client.state && `, ${quotation.client.state}`}
-                          {quotation.client.postalCode && ` ${quotation.client.postalCode}`}
-                        </p>
-                      )}
-                      <p>{quotation?.client?.country}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Your Company Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loadingItems ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-4 w-64" />
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <p className="font-medium">{quotation?.companyProfile?.companyName}</p>
-                      <p>{quotation?.companyProfile?.contactName}</p>
-                      <p>{quotation?.companyProfile?.email}</p>
-                      <p>{quotation?.companyProfile?.phone}</p>
-                      <p>{quotation?.companyProfile?.address}</p>
-                      {quotation?.companyProfile?.city && (
-                        <p>
-                          {quotation.companyProfile.city}
-                          {quotation.companyProfile.state && `, ${quotation.companyProfile.state}`}
-                          {quotation.companyProfile.postalCode && ` ${quotation.companyProfile.postalCode}`}
-                        </p>
-                      )}
-                      <p>{quotation?.companyProfile?.country}</p>
-                      {quotation?.companyProfile?.taxId && (
-                        <p>Tax ID: {quotation.companyProfile.taxId}</p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="materials" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Materials & Services</CardTitle>
-                <CardDescription>
-                  Items included in this quotation
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingItems ? (
-                  <div className="space-y-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="flex items-center space-x-4">
-                        <Skeleton className="h-8 w-[400px]" />
-                        <Skeleton className="h-8 w-16" />
-                        <Skeleton className="h-8 w-24" />
-                        <Skeleton className="h-8 w-20" />
-                      </div>
-                    ))}
-                  </div>
-                ) : !items || items.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-medium">No items found</h3>
-                    <p className="text-sm text-muted-foreground">
-                      This quotation doesn't have any materials or services.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b text-left">
-                          <th className="py-3 px-4 font-medium">Description</th>
-                          <th className="py-3 px-4 font-medium text-right">Quantity</th>
-                          <th className="py-3 px-4 font-medium text-right">Unit Price</th>
-                          <th className="py-3 px-4 font-medium text-right">Discount</th>
-                          <th className="py-3 px-4 font-medium text-right">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.map((item) => (
-                          <tr key={item.id} className="border-b">
-                            <td className="py-3 px-4">{item.description}</td>
-                            <td className="py-3 px-4 text-right">{item.quantity}</td>
-                            <td className="py-3 px-4 text-right">
-                              {new Intl.NumberFormat("en-US", {
-                                style: "currency",
-                                currency: quotation?.currency || "USD",
-                              }).format(item.unitPrice)}
-                            </td>
-                            <td className="py-3 px-4 text-right">
-                              {item.discount ? `${item.discount}%` : "-"}
-                            </td>
-                            <td className="py-3 px-4 text-right">
-                              {new Intl.NumberFormat("en-US", {
-                                style: "currency",
-                                currency: quotation?.currency || "USD",
-                              }).format(
-                                item.quantity * item.unitPrice * (1 - (item.discount ? parseInt(item.discount) / 100 : 0))
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="terms" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Terms & Conditions</CardTitle>
-                <CardDescription>
-                  Terms and conditions for this quotation
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingTerms ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-5/6" />
-                    <Skeleton className="h-4 w-full" />
-                  </div>
-                ) : !terms || terms.length === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <User className="mr-2 h-5 w-5" />
+                Client Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!quotation.clientName ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  No client associated with this quotation.
+                </div>
+              ) : (
+                <div className="space-y-4">
                   <div>
-                    {quotation?.terms ? (
-                      <div className="prose prose-sm max-w-none">
-                        <pre className="whitespace-pre-wrap">{quotation.terms}</pre>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
-                        <h3 className="mt-4 text-lg font-medium">No terms found</h3>
-                        <p className="text-sm text-muted-foreground">
-                          This quotation doesn't have any terms and conditions.
-                        </p>
-                      </div>
-                    )}
+                    <div className="text-sm font-medium text-muted-foreground mb-1">Client Name</div>
+                    <div className="flex items-center">
+                      <Building className="mr-2 h-4 w-4 text-muted-foreground" />
+                      <div>{quotation.clientName}</div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-6">
-                    {terms.map((term) => (
-                      <div key={term.id} className="border-b pb-4">
-                        <h3 className="font-medium text-lg mb-2">{term.title}</h3>
-                        <p className="text-sm text-muted-foreground">{term.content}</p>
+                  
+                  {quotation.clientEmail && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Email</div>
+                      <div className="flex items-center">
+                        <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <div>{quotation.clientEmail}</div>
                       </div>
-                    ))}
+                    </div>
+                  )}
+                  
+                  {quotation.clientPhone && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Phone</div>
+                      <div className="flex items-center">
+                        <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <div>{quotation.clientPhone}</div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {quotation.clientAddress && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Address</div>
+                      <div className="flex items-start">
+                        <MapPin className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <div style={{ whiteSpace: 'pre-line' }}>{quotation.clientAddress}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <CalendarIcon className="mr-2 h-5 w-5" />
+                Quotation Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Quotation Number</div>
+                  <div>{quotation.quotationNumber || "Not assigned"}</div>
+                </div>
+                
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Date Created</div>
+                  <div className="flex items-center">
+                    <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <div>{quotation.date ? format(new Date(quotation.date), "MMMM d, yyyy") : "Not set"}</div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Valid Until</div>
+                  <div className="flex items-center">
+                    <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <div>{quotation.validUntil ? format(new Date(quotation.validUntil), "MMMM d, yyyy") : "Not set"}</div>
+                  </div>
+                </div>
+                
+                {quotation.reference && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">Reference</div>
+                    <div className="flex items-center">
+                      <Tag className="mr-2 h-4 w-4 text-muted-foreground" />
+                      <div>{quotation.reference}</div>
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="documents" className="space-y-6">
+              </div>
+            </CardContent>
+          </Card>
+
+          {quotation.notes && (
             <Card>
               <CardHeader>
-                <CardTitle>Documents</CardTitle>
-                <CardDescription>
-                  Supporting documents for this quotation
-                </CardDescription>
+                <CardTitle>Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                {loadingDocuments ? (
-                  <div className="space-y-4">
-                    {Array.from({ length: 2 }).map((_, i) => (
-                      <div key={i} className="flex items-center space-x-4">
-                        <Skeleton className="h-8 w-[400px]" />
-                        <Skeleton className="h-8 w-24" />
-                      </div>
-                    ))}
-                  </div>
-                ) : !documents || documents.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-medium">No documents found</h3>
-                    <p className="text-sm text-muted-foreground">
-                      This quotation doesn't have any attached documents.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b text-left">
-                          <th className="py-3 px-4 font-medium">Name</th>
-                          <th className="py-3 px-4 font-medium">Type</th>
-                          <th className="py-3 px-4 font-medium">Size</th>
-                          <th className="py-3 px-4 font-medium">Date Added</th>
-                          <th className="py-3 px-4 font-medium"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {documents.map((doc) => (
-                          <tr key={doc.id} className="border-b">
-                            <td className="py-3 px-4">{doc.document.name}</td>
-                            <td className="py-3 px-4">{doc.document.type}</td>
-                            <td className="py-3 px-4">
-                              {formatFileSize(doc.document.fileSize)}
-                            </td>
-                            <td className="py-3 px-4">
-                              {format(new Date(doc.document.createdAt), "MMM d, yyyy")}
-                            </td>
-                            <td className="py-3 px-4">
-                              <a 
-                                href={`/api/documents/${doc.document.id}/download`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Button variant="ghost" size="sm">
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                              </a>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <div className="whitespace-pre-line">
+                  {quotation.notes}
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
-      )}
+          )}
+        </div>
+      </div>
     </div>
   );
 }
