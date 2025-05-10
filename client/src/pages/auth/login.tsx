@@ -51,8 +51,8 @@ export default function LoginPage() {
   return (
     <>
       <Helmet>
-        <title>Login | InvoiceFlow</title>
-        <meta name="description" content="Log in to your InvoiceFlow account to create and manage professional invoices." />
+        <title>Login | CRMPro</title>
+        <meta name="description" content="Log in to your CRMPro account to create and manage professional quotations and invoices." />
       </Helmet>
       
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -60,7 +60,7 @@ export default function LoginPage() {
           <div className="flex justify-center">
             <div className="flex items-center text-primary-600">
               <File className="h-8 w-8 mr-2" />
-              <span className="text-2xl font-bold">InvoiceFlow</span>
+              <span className="text-2xl font-bold">CRMPro</span>
             </div>
           </div>
           <h2 className="mt-3 text-center text-3xl font-extrabold text-gray-900">
@@ -68,10 +68,8 @@ export default function LoginPage() {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{" "}
-            <Link href="/register">
-              <a className="font-medium text-primary-600 hover:text-primary-500">
-                create a new account
-              </a>
+            <Link href="/register" className="font-medium text-primary-600 hover:text-primary-500">
+              create a new account
             </Link>
           </p>
         </div>
@@ -146,10 +144,8 @@ export default function LoginPage() {
             </CardContent>
             <CardFooter className="flex justify-center border-t">
               <div className="text-sm text-center text-gray-600">
-                <Link href="/register">
-                  <a className="text-primary-600 hover:text-primary-500">
-                    Don't have an account? Sign up
-                  </a>
+                <Link href="/register" className="text-primary-600 hover:text-primary-500">
+                  Don't have an account? Sign up
                 </Link>
               </div>
             </CardFooter>
