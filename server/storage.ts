@@ -20,6 +20,8 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   updateUserSubscription(userId: number, planId: string, quota: number): Promise<User>;
   incrementInvoiceUsage(userId: number): Promise<void>;
+  incrementQuoteUsage(userId: number): Promise<void>;
+  incrementMaterialUsage(userId: number): Promise<void>;
   
   // Company profile methods
   getCompanyProfiles(userId: number): Promise<CompanyProfile[]>;
@@ -35,6 +37,70 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<InsertClient>): Promise<Client>;
   deleteClient(id: number): Promise<void>;
+  getCentralRepoClients(): Promise<Client[]>;
+  
+  // Material and Service methods
+  getMasterItems(category?: string): Promise<MasterItem[]>;
+  getMasterItem(id: number): Promise<MasterItem | undefined>;
+  getMasterItemByCode(code: string): Promise<MasterItem | undefined>;
+  createMasterItem(item: InsertMasterItem): Promise<MasterItem>;
+  updateMasterItem(id: number, item: Partial<InsertMasterItem>): Promise<MasterItem>;
+  deleteMasterItem(id: number): Promise<void>;
+  
+  // Company item methods
+  getCompanyItems(userId: number, category?: string): Promise<CompanyItem[]>;
+  getCompanyItem(id: number): Promise<CompanyItem | undefined>;
+  createCompanyItem(item: InsertCompanyItem): Promise<CompanyItem>;
+  updateCompanyItem(id: number, item: Partial<InsertCompanyItem>): Promise<CompanyItem>;
+  deleteCompanyItem(id: number): Promise<void>;
+  
+  // Terms methods
+  getMasterTerms(category?: string): Promise<MasterTerm[]>;
+  getMasterTerm(id: number): Promise<MasterTerm | undefined>;
+  createMasterTerm(term: InsertMasterTerm): Promise<MasterTerm>;
+  updateMasterTerm(id: number, term: Partial<InsertMasterTerm>): Promise<MasterTerm>;
+  deleteMasterTerm(id: number): Promise<void>;
+  
+  // Company terms methods
+  getCompanyTerms(userId: number, category?: string): Promise<CompanyTerm[]>;
+  getCompanyTerm(id: number): Promise<CompanyTerm | undefined>;
+  createCompanyTerm(term: InsertCompanyTerm): Promise<CompanyTerm>;
+  updateCompanyTerm(id: number, term: Partial<InsertCompanyTerm>): Promise<CompanyTerm>;
+  deleteCompanyTerm(id: number): Promise<void>;
+
+  // Document methods
+  getUserDocuments(userId: number, type?: string): Promise<Document[]>;
+  getDocument(id: number): Promise<Document | undefined>;
+  createDocument(document: InsertDocument): Promise<Document>;
+  deleteDocument(id: number): Promise<void>;
+  
+  // Quotation methods
+  getQuotations(userId: number): Promise<Quotation[]>;
+  getQuotation(id: number): Promise<Quotation | undefined>;
+  createQuotation(quotation: InsertQuotation): Promise<Quotation>;
+  updateQuotation(id: number, quotation: Partial<InsertQuotation>): Promise<Quotation>;
+  deleteQuotation(id: number): Promise<void>;
+  
+  // Quotation items methods
+  getQuotationItems(quotationId: number): Promise<QuotationItem[]>;
+  createQuotationItem(item: InsertQuotationItem): Promise<QuotationItem>;
+  updateQuotationItem(id: number, item: Partial<InsertQuotationItem>): Promise<QuotationItem>;
+  deleteQuotationItem(id: number): Promise<void>;
+  
+  // Quotation document methods
+  getQuotationDocuments(quotationId: number): Promise<QuotationDocument[]>;
+  createQuotationDocument(doc: InsertQuotationDocument): Promise<QuotationDocument>;
+  deleteQuotationDocument(id: number): Promise<void>;
+  
+  // Quotation terms methods
+  getQuotationTerms(quotationId: number): Promise<QuotationTerm[]>;
+  createQuotationTerm(term: InsertQuotationTerm): Promise<QuotationTerm>;
+  updateQuotationTerm(id: number, term: Partial<InsertQuotationTerm>): Promise<QuotationTerm>;
+  deleteQuotationTerm(id: number): Promise<void>;
+  
+  // Material usage methods
+  trackMaterialUsage(usage: InsertMaterialUsage): Promise<MaterialUsage>;
+  getMaterialUsage(userId: number): Promise<MaterialUsage[]>;
   
   // Invoice methods
   getInvoices(userId: number): Promise<Invoice[]>;
@@ -58,8 +124,8 @@ export interface IStorage {
   getTaxRatesByCountry(countryCode: string): Promise<TaxRate[]>;
   getDefaultTaxRate(countryCode: string): Promise<TaxRate | undefined>;
   
-  // Invoice template methods
-  getInvoiceTemplates(includesPremium: boolean): Promise<InvoiceTemplate[]>;
+  // Invoice/Quotation template methods
+  getInvoiceTemplates(includesPremium: boolean, type?: string): Promise<InvoiceTemplate[]>;
   getInvoiceTemplate(id: string): Promise<InvoiceTemplate | undefined>;
 }
 
