@@ -28,6 +28,11 @@ export function Sidebar({ className }: SidebarProps) {
       path: "/",
     },
     {
+      title: "Quotations",
+      icon: <File className="h-5 w-5" />,
+      path: "/quotations",
+    },
+    {
       title: "Invoices",
       icon: <File className="h-5 w-5" />,
       path: "/invoices",
@@ -36,6 +41,21 @@ export function Sidebar({ className }: SidebarProps) {
       title: "Clients",
       icon: <Users className="h-5 w-5" />,
       path: "/clients",
+    },
+    {
+      title: "Materials",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      path: "/materials",
+    },
+    {
+      title: "Terms & Conditions",
+      icon: <File className="h-5 w-5" />,
+      path: "/terms",
+    },
+    {
+      title: "Documents",
+      icon: <File className="h-5 w-5" />,
+      path: "/documents",
     },
     {
       title: "Settings",

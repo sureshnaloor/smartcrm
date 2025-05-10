@@ -16,6 +16,23 @@ import CreateClientPage from "@/pages/clients/create";
 import SettingsPage from "@/pages/settings";
 import PrivateRoute from "@/components/auth/private-route";
 
+// TODO: Uncomment these imports when pages are created
+// Quotation Pages
+// import QuotationsPage from "@/pages/quotations";
+// import CreateQuotationPage from "@/pages/quotations/create";
+// import QuotationDetailsPage from "@/pages/quotations/[id]";
+
+// Materials Pages
+// import MaterialsPage from "@/pages/materials";
+// import CreateMaterialPage from "@/pages/materials/create";
+
+// Terms & Conditions Pages
+// import TermsPage from "@/pages/terms";
+// import CreateTermPage from "@/pages/terms/create";
+
+// Documents Page
+// import DocumentsPage from "@/pages/documents";
+
 function Router() {
   return (
     <Switch>
@@ -30,6 +47,31 @@ function Router() {
         </PrivateRoute>
       </Route>
       
+      {/* TODO: Uncomment these routes when pages are created */}
+      {/* Quotation Routes */}
+      {/*
+      <Route path="/quotations">
+        <PrivateRoute>
+          <QuotationsPage />
+        </PrivateRoute>
+      </Route>
+      
+      <Route path="/quotations/create">
+        <PrivateRoute>
+          <CreateQuotationPage />
+        </PrivateRoute>
+      </Route>
+      
+      <Route path="/quotations/:id">
+        {(params) => (
+          <PrivateRoute>
+            <QuotationDetailsPage id={params.id} />
+          </PrivateRoute>
+        )}
+      </Route>
+      */}
+      
+      {/* Invoice Routes */}
       <Route path="/invoices">
         <PrivateRoute>
           <InvoicesPage />
@@ -50,6 +92,7 @@ function Router() {
         )}
       </Route>
       
+      {/* Client Routes */}
       <Route path="/clients">
         <PrivateRoute>
           <ClientsPage />
@@ -62,6 +105,46 @@ function Router() {
         </PrivateRoute>
       </Route>
       
+      {/* Materials Routes - Uncomment when pages are created */}
+      {/*
+      <Route path="/materials">
+        <PrivateRoute>
+          <MaterialsPage />
+        </PrivateRoute>
+      </Route>
+      
+      <Route path="/materials/create">
+        <PrivateRoute>
+          <CreateMaterialPage />
+        </PrivateRoute>
+      </Route>
+      */}
+      
+      {/* Terms Routes - Uncomment when pages are created */}
+      {/*
+      <Route path="/terms">
+        <PrivateRoute>
+          <TermsPage />
+        </PrivateRoute>
+      </Route>
+      
+      <Route path="/terms/create">
+        <PrivateRoute>
+          <CreateTermPage />
+        </PrivateRoute>
+      </Route>
+      */}
+      
+      {/* Documents Route - Uncomment when page is created */}
+      {/*
+      <Route path="/documents">
+        <PrivateRoute>
+          <DocumentsPage />
+        </PrivateRoute>
+      </Route>
+      */}
+      
+      {/* Settings Route */}
       <Route path="/settings">
         <PrivateRoute>
           <SettingsPage />

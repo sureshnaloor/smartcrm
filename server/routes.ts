@@ -76,7 +76,12 @@ const handleValidation = <T>(schema: any, data: T): T => {
   }
 };
 
+// Import quotation routes
+import { registerQuotationRoutes } from "./quotation-routes";
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register quotation related routes
+  registerQuotationRoutes(app);
   // Use sessions
   app.use((req, res, next) => {
     if (!req.session) {
