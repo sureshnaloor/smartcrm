@@ -8,8 +8,19 @@ import {
   type InvoiceItem, type InsertInvoiceItem,
   type SubscriptionPlan, type InsertSubscriptionPlan,
   type TaxRate, type InsertTaxRate,
-  type InvoiceTemplate, type InsertInvoiceTemplate
+  type InvoiceTemplate, type InsertInvoiceTemplate,
+  type MasterItem, type InsertMasterItem,
+  type CompanyItem, type InsertCompanyItem,
+  type MasterTerm, type InsertMasterTerm,
+  type CompanyTerm, type InsertCompanyTerm,
+  type Document, type InsertDocument,
+  type Quotation, type InsertQuotation,
+  type QuotationItem, type InsertQuotationItem,
+  type QuotationDocument, type InsertQuotationDocument,
+  type QuotationTerm, type InsertQuotationTerm,
+  type MaterialUsage, type InsertMaterialUsage
 } from "@shared/schema";
+import { QuotationStorage } from "./quotation-storage";
 import crypto from "crypto";
 
 // Storage interface
@@ -650,9 +661,16 @@ export class MemStorage implements IStorage {
 import { DatabaseStorage } from "./db-storage";
 
 // Create and export an instance of DatabaseStorage
-export const storage = new DatabaseStorage();
+// Use QuotationStorage which extends DatabaseStorage and implements
+// all the methods required for the quotation system
+export const storage = new QuotationStorage();
 
 // Initialize database with default data
 storage.seedDefaultData().catch(err => {
   console.error("Error seeding default data:", err);
+});
+
+// Also seed quotation-specific data
+(storage as QuotationStorage).seedQuotationData().catch(err => {
+  console.error("Error seeding quotation data:", err);
 });
