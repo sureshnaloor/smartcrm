@@ -11,7 +11,7 @@ import {
   type InvoiceTemplate, type InsertInvoiceTemplate
 } from "@shared/schema";
 
-import { IStorage } from "./storage";
+import { IStorage } from "./invoice-storage";
 import { db } from "./lib/db";
 import { eq, ne, and, desc, not } from "drizzle-orm";
 import crypto from "crypto";

@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import multer from "multer";
-import { storage } from "./storage";
+import { storage } from "./invoice-storage";
 import {
   insertQuotationSchema,
   insertQuotationItemSchema,
@@ -1048,7 +1048,7 @@ export function registerQuotationRoutes(app: Express): void {
       }
       
       // Check invoice quota
-      const checkQuota = await import("./routes");
+      const checkQuota = await import("./invoice-routes");
       if (!(await checkQuota.checkInvoiceQuota(userId, res))) {
         return;
       }

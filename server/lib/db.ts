@@ -1,5 +1,6 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import 'dotenv/config'
 import * as schema from '@shared/schema';
 
 // Initialize connection pool
