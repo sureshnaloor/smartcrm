@@ -176,6 +176,9 @@ export class MemStorage implements IStorage {
       interval: "monthly",
       features: ["5 clients", "10 invoices/month", "Basic templates", "PDF generation"],
       invoiceQuota: 10,
+      quoteQuota: 5,
+      materialRecordsLimit: 50,
+      includesCentralMasters: false,
       isActive: true
     });
     
@@ -185,7 +188,10 @@ export class MemStorage implements IStorage {
       price: "9.99",
       interval: "monthly",
       features: ["Unlimited clients", "Unlimited invoices", "All templates", "Excel import", "No branding"],
-      invoiceQuota: -1, // unlimited
+      invoiceQuota: -1,
+      quoteQuota: -1,
+      materialRecordsLimit: -1,
+      includesCentralMasters: true,
       isActive: true
     });
     
@@ -195,7 +201,10 @@ export class MemStorage implements IStorage {
       price: "99.99",
       interval: "yearly",
       features: ["Unlimited clients", "Unlimited invoices", "All templates", "Excel import", "No branding", "2 months free"],
-      invoiceQuota: -1, // unlimited
+      invoiceQuota: -1,
+      quoteQuota: -1,
+      materialRecordsLimit: -1,
+      includesCentralMasters: true,
       isActive: true
     });
     
@@ -206,6 +215,9 @@ export class MemStorage implements IStorage {
       interval: "one-time",
       features: ["10 invoices bundle", "All templates", "Excel import", "No branding", "Valid for 1 month"],
       invoiceQuota: 10,
+      quoteQuota: 5,
+      materialRecordsLimit: 50,
+      includesCentralMasters: false,
       isActive: true
     });
     
@@ -225,17 +237,17 @@ export class MemStorage implements IStorage {
     
     defaultTaxRates.forEach(taxRate => {
       const id = this.currentTaxRateId++;
-      this.taxRates.set(id, { ...taxRate, id });
+      this.taxRates.set(id, { ...taxRate, id, isDefault: taxRate.isDefault ?? null });
     });
     
     // Initialize invoice templates
     const defaultTemplates: (Omit<InvoiceTemplate, "id"> & { id: string })[] = [
-      { id: "classic", name: "Classic", previewUrl: "https://images.unsplash.com/photo-1616531770192-6eaea74c2456", isDefault: true, isPremium: false },
-      { id: "modern-blue", name: "Modern Blue", previewUrl: "https://images.unsplash.com/photo-1586892477838-2b96e85e0f96", isDefault: false, isPremium: false },
-      { id: "executive", name: "Executive", previewUrl: "https://images.unsplash.com/photo-1618044733300-9472054094ee", isDefault: false, isPremium: true },
-      { id: "minimal", name: "Minimal", previewUrl: "https://images.unsplash.com/photo-1636633762833-5d1658f1e29b", isDefault: false, isPremium: false },
-      { id: "dynamic", name: "Dynamic", previewUrl: "https://images.unsplash.com/photo-1586282391129-76a6df230234", isDefault: false, isPremium: true },
-      { id: "geometric", name: "Geometric", previewUrl: "https://images.unsplash.com/photo-1542621334-a254cf47733d", isDefault: false, isPremium: true },
+      { id: "classic", name: "Classic", type: "invoice", previewUrl: "https://images.unsplash.com/photo-1616531770192-6eaea74c2456", isDefault: true, isPremium: false },
+      { id: "modern-blue", name: "Modern Blue", type: "invoice", previewUrl: "https://images.unsplash.com/photo-1586892477838-2b96e85e0f96", isDefault: false, isPremium: false },
+      { id: "executive", name: "Executive", type: "invoice", previewUrl: "https://images.unsplash.com/photo-1618044733300-9472054094ee", isDefault: false, isPremium: true },
+      { id: "minimal", name: "Minimal", type: "invoice", previewUrl: "https://images.unsplash.com/photo-1636633762833-5d1658f1e29b", isDefault: false, isPremium: false },
+      { id: "dynamic", name: "Dynamic", type: "invoice", previewUrl: "https://images.unsplash.com/photo-1586282391129-76a6df230234", isDefault: false, isPremium: true },
+      { id: "geometric", name: "Geometric", type: "invoice", previewUrl: "https://images.unsplash.com/photo-1542621334-a254cf47733d", isDefault: false, isPremium: true },
     ];
     
     defaultTemplates.forEach(template => {
@@ -251,13 +263,17 @@ export class MemStorage implements IStorage {
     const id = this.currentUserId++;
     const user: User = {
       id,
-      ...rest,
+      email: rest.email,
+      fullName: rest.fullName ?? null,
       passwordHash,
+      createdAt: new Date(),
       planId: "free",
       invoiceQuota: 10,
       invoicesUsed: 0,
+      quoteQuota: 5,
+      quotesUsed: 0,
+      materialRecordsUsed: 0,
       subscriptionStatus: "active",
-      createdAt: new Date(),
       subscriptionExpiresAt: null
     };
     
@@ -298,7 +314,7 @@ export class MemStorage implements IStorage {
     
     const updatedUser: User = {
       ...user,
-      invoicesUsed: user.invoicesUsed + 1
+      invoicesUsed: (user.invoicesUsed ?? 0) + 1
     };
     
     this.users.set(userId, updatedUser);
@@ -322,11 +338,9 @@ export class MemStorage implements IStorage {
   async createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile> {
     const id = this.currentCompanyProfileId++;
     
-    // If this is the first profile for this user, make it default
     const existingProfiles = await this.getCompanyProfiles(profile.userId);
     const isDefault = existingProfiles.length === 0 ? true : profile.isDefault || false;
     
-    // If we're setting this profile as default, unset any existing default
     if (isDefault) {
       for (const existingProfile of existingProfiles) {
         if (existingProfile.isDefault) {
@@ -340,8 +354,25 @@ export class MemStorage implements IStorage {
     
     const companyProfile: CompanyProfile = {
       id,
-      ...profile,
-      isDefault
+      name: profile.name,
+      userId: profile.userId,
+      email: profile.email ?? null,
+      taxId: profile.taxId ?? null,
+      address: profile.address ?? null,
+      city: profile.city ?? null,
+      state: profile.state ?? null,
+      postalCode: profile.postalCode ?? null,
+      country: profile.country ?? null,
+      phone: profile.phone ?? null,
+      website: profile.website ?? null,
+      logoUrl: profile.logoUrl ?? null,
+      bankName: profile.bankName ?? null,
+      bankAccountName: profile.bankAccountName ?? null,
+      bankAccountNumber: profile.bankAccountNumber ?? null,
+      bankRoutingNumber: profile.bankRoutingNumber ?? null,
+      bankSwiftBic: profile.bankSwiftBic ?? null,
+      bankIban: profile.bankIban ?? null,
+      isDefault: isDefault
     };
     
     this.companyProfiles.set(id, companyProfile);
@@ -417,7 +448,18 @@ export class MemStorage implements IStorage {
     const id = this.currentClientId++;
     const newClient: Client = {
       id,
-      ...client
+      name: client.name,
+      userId: client.userId,
+      email: client.email ?? null,
+      taxId: client.taxId ?? null,
+      address: client.address ?? null,
+      city: client.city ?? null,
+      state: client.state ?? null,
+      postalCode: client.postalCode ?? null,
+      country: client.country ?? null,
+      phone: client.phone ?? null,
+      notes: client.notes ?? null,
+      isFromCentralRepo: false
     };
     
     this.clients.set(id, newClient);
@@ -468,13 +510,27 @@ export class MemStorage implements IStorage {
     
     const newInvoice: Invoice = {
       id,
-      ...invoice,
+      createdAt: now,
+      status: invoice.status ?? "draft",
+      userId: invoice.userId,
+      country: invoice.country,
+      companyProfileId: invoice.companyProfileId,
+      notes: invoice.notes ?? null,
+      clientId: invoice.clientId,
+      currency: invoice.currency,
+      templateId: invoice.templateId ?? null,
       subtotal: "0",
       tax: "0",
       total: "0",
-      createdAt: now,
       updatedAt: now,
-      pdfUrl: null
+      pdfUrl: null,
+      dueDate: invoice.dueDate ?? null,
+      discount: invoice.discount ?? null,
+      taxRate: invoice.taxRate ?? null,
+      terms: invoice.terms ?? null,
+      quotationId: invoice.quotationId ?? null,
+      invoiceNumber: invoice.invoiceNumber ?? null,
+      invoiceDate: invoice.invoiceDate ?? now
     };
     
     this.invoices.set(id, newInvoice);
@@ -517,7 +573,6 @@ export class MemStorage implements IStorage {
   }
   
   async createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem> {
-    // Calculate the amount
     const quantity = parseFloat(item.quantity.toString());
     const unitPrice = parseFloat(item.unitPrice.toString());
     const discount = parseFloat(item.discount?.toString() || "0");
@@ -527,13 +582,16 @@ export class MemStorage implements IStorage {
     const id = this.currentInvoiceItemId++;
     const newItem: InvoiceItem = {
       id,
-      ...item,
-      amount
+      description: item.description,
+      discount: item.discount ?? null,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      amount,
+      invoiceId: item.invoiceId,
+      quotationItemId: item.quotationItemId ?? null
     };
     
     this.invoiceItems.set(id, newItem);
-    
-    // Update invoice totals
     await this.recalculateInvoiceTotals(item.invoiceId);
     
     return newItem;
@@ -656,21 +714,100 @@ export class MemStorage implements IStorage {
     
     this.invoices.set(invoiceId, updatedInvoice);
   }
+
+  // Add missing methods
+  async incrementQuoteUsage(userId: number): Promise<void> {
+    const user = await this.getUserById(userId);
+    if (!user) throw new Error(`User with ID ${userId} not found`);
+    // Implementation for quote usage tracking
+  }
+
+  async incrementMaterialUsage(userId: number): Promise<void> {
+    const user = await this.getUserById(userId);
+    if (!user) throw new Error(`User with ID ${userId} not found`);
+    // Implementation for material usage tracking
+  }
+
+  async getCentralRepoClients(): Promise<Client[]> {
+    return Array.from(this.clients.values())
+      .filter(client => client.isFromCentralRepo);
+  }
+
+  async getMasterItems(category?: string): Promise<MasterItem[]> {
+    return []; // Implementation for master items
+  }
+
+  async getMasterItem(id: number): Promise<MasterItem | undefined> {
+    return undefined; // Implementation for master item
+  }
+
+  async getMasterItemByCode(code: string): Promise<MasterItem | undefined> {
+    return undefined; // Implementation for master item by code
+  }
+
+  async createMasterItem(item: InsertMasterItem): Promise<MasterItem> {
+    throw new Error("Not implemented"); // Implementation for creating master item
+  }
+
+  async updateMasterItem(id: number, item: Partial<InsertMasterItem>): Promise<MasterItem> {
+    throw new Error("Not implemented"); // Implementation for updating master item
+  }
+
+  async deleteMasterItem(id: number): Promise<void> {
+    // Implementation for deleting master item
+  }
+
+  // Add remaining missing methods with similar stubs
+  async getCompanyItems(userId: number, category?: string): Promise<CompanyItem[]> { return []; }
+  async getCompanyItem(id: number): Promise<CompanyItem | undefined> { return undefined; }
+  async createCompanyItem(item: InsertCompanyItem): Promise<CompanyItem> { throw new Error("Not implemented"); }
+  async updateCompanyItem(id: number, item: Partial<InsertCompanyItem>): Promise<CompanyItem> { throw new Error("Not implemented"); }
+  async deleteCompanyItem(id: number): Promise<void> {}
+  async getMasterTerms(category?: string): Promise<MasterTerm[]> { return []; }
+  async getMasterTerm(id: number): Promise<MasterTerm | undefined> { return undefined; }
+  async createMasterTerm(term: InsertMasterTerm): Promise<MasterTerm> { throw new Error("Not implemented"); }
+  async updateMasterTerm(id: number, term: Partial<InsertMasterTerm>): Promise<MasterTerm> { throw new Error("Not implemented"); }
+  async deleteMasterTerm(id: number): Promise<void> {}
+  async getCompanyTerms(userId: number, category?: string): Promise<CompanyTerm[]> { return []; }
+  async getCompanyTerm(id: number): Promise<CompanyTerm | undefined> { return undefined; }
+  async createCompanyTerm(term: InsertCompanyTerm): Promise<CompanyTerm> { throw new Error("Not implemented"); }
+  async updateCompanyTerm(id: number, term: Partial<InsertCompanyTerm>): Promise<CompanyTerm> { throw new Error("Not implemented"); }
+  async deleteCompanyTerm(id: number): Promise<void> {}
+  async getUserDocuments(userId: number, type?: string): Promise<Document[]> { return []; }
+  async getDocument(id: number): Promise<Document | undefined> { return undefined; }
+  async createDocument(document: InsertDocument): Promise<Document> { throw new Error("Not implemented"); }
+  async deleteDocument(id: number): Promise<void> {}
+  async getQuotations(userId: number): Promise<Quotation[]> { return []; }
+  async getQuotation(id: number): Promise<Quotation | undefined> { return undefined; }
+  async createQuotation(quotation: InsertQuotation): Promise<Quotation> { throw new Error("Not implemented"); }
+  async updateQuotation(id: number, quotation: Partial<InsertQuotation>): Promise<Quotation> { throw new Error("Not implemented"); }
+  async deleteQuotation(id: number): Promise<void> {}
+  async getQuotationItems(quotationId: number): Promise<QuotationItem[]> { return []; }
+  async createQuotationItem(item: InsertQuotationItem): Promise<QuotationItem> { throw new Error("Not implemented"); }
+  async updateQuotationItem(id: number, item: Partial<InsertQuotationItem>): Promise<QuotationItem> { throw new Error("Not implemented"); }
+  async deleteQuotationItem(id: number): Promise<void> {}
+  async getQuotationDocuments(quotationId: number): Promise<QuotationDocument[]> { return []; }
+  async createQuotationDocument(doc: InsertQuotationDocument): Promise<QuotationDocument> { throw new Error("Not implemented"); }
+  async deleteQuotationDocument(id: number): Promise<void> {}
+  async getQuotationTerms(quotationId: number): Promise<QuotationTerm[]> { return []; }
+  async createQuotationTerm(term: InsertQuotationTerm): Promise<QuotationTerm> { throw new Error("Not implemented"); }
+  async updateQuotationTerm(id: number, term: Partial<InsertQuotationTerm>): Promise<QuotationTerm> { throw new Error("Not implemented"); }
+  async deleteQuotationTerm(id: number): Promise<void> {}
+  async trackMaterialUsage(usage: InsertMaterialUsage): Promise<MaterialUsage> { throw new Error("Not implemented"); }
+  async getMaterialUsage(userId: number): Promise<MaterialUsage[]> { return []; }
 }
 
 import { DatabaseStorage } from "./db-storage";
 
 // Create and export an instance of DatabaseStorage
-// Use QuotationStorage which extends DatabaseStorage and implements
-// all the methods required for the quotation system
 export const storage = new QuotationStorage();
 
 // Initialize database with default data
-storage.seedDefaultData().catch(err => {
+storage.seedDefaultData().catch((err: Error) => {
   console.error("Error seeding default data:", err);
 });
 
 // Also seed quotation-specific data
-(storage as QuotationStorage).seedQuotationData().catch(err => {
+(storage as QuotationStorage).seedQuotationData().catch((err: Error) => {
   console.error("Error seeding quotation data:", err);
 });

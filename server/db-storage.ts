@@ -1,6 +1,8 @@
+import { eq, and, ne } from "drizzle-orm";
+import { db } from "./db";
 import {
   users, companyProfiles, clients, invoices, invoiceItems,
-  subscriptionPlans, taxRates, invoiceTemplates, 
+  subscriptionPlans, taxRates, invoiceTemplates,
   type User, type InsertUser,
   type CompanyProfile, type InsertCompanyProfile,
   type Client, type InsertClient,
@@ -8,30 +10,30 @@ import {
   type InvoiceItem, type InsertInvoiceItem,
   type SubscriptionPlan, type InsertSubscriptionPlan,
   type TaxRate, type InsertTaxRate,
-  type InvoiceTemplate, type InsertInvoiceTemplate
+  type InvoiceTemplate, type InsertInvoiceTemplate,
+  type InvoiceStatus
 } from "@shared/schema";
-
-import { IStorage } from "./invoice-storage";
-import { db } from "./lib/db";
-import { eq, ne, and, desc, not } from "drizzle-orm";
-import crypto from "crypto";
+import { IStorage } from "./storage";
+import { hashPassword } from "./auth";
 
 // Postgresql Storage Implementation
 export class DatabaseStorage implements IStorage {
-  
   // User methods
   async createUser(userData: InsertUser & { password: string }): Promise<User> {
-    const { password, ...rest } = userData;
-    const passwordHash = this.hashPassword(password);
+    const passwordHash = await hashPassword(userData.password);
+    const { password, ...userWithoutPassword } = userData;
     
     const newUser = {
-      ...rest,
+      ...userWithoutPassword,
       passwordHash,
+      createdAt: new Date(),
       planId: "free",
       invoiceQuota: 10,
       invoicesUsed: 0,
-      subscriptionStatus: "active" as const,
-      subscriptionExpiresAt: null
+      quoteQuota: 10,
+      quotesUsed: 0,
+      materialRecordsUsed: 0,
+      subscriptionStatus: "active"
     };
     
     const [user] = await db.insert(users).values(newUser).returning();
@@ -49,16 +51,18 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateUserSubscription(userId: number, planId: string, quota: number): Promise<User> {
-    const subscriptionExpiresAt = planId === "per-invoice" 
-      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
-      : null;
-      
+    const subscriptionExpiresAt = new Date();
+    subscriptionExpiresAt.setFullYear(subscriptionExpiresAt.getFullYear() + 1);
+    
     const [user] = await db
       .update(users)
       .set({
         planId,
         invoiceQuota: quota,
         invoicesUsed: 0,
+        quoteQuota: quota,
+        quotesUsed: 0,
+        materialRecordsUsed: 0,
         subscriptionStatus: "active",
         subscriptionExpiresAt
       })
@@ -69,8 +73,8 @@ export class DatabaseStorage implements IStorage {
   }
   
   async incrementInvoiceUsage(userId: number): Promise<void> {
-    const user = await this.getUserById(userId);
-    if (!user) throw new Error(`User with ID ${userId} not found`);
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) throw new Error("User not found");
     
     const currentUsage = user.invoicesUsed || 0;
     
@@ -84,12 +88,10 @@ export class DatabaseStorage implements IStorage {
   
   // Company profile methods
   async getCompanyProfiles(userId: number): Promise<CompanyProfile[]> {
-    const profiles = await db
+    return await db
       .select()
       .from(companyProfiles)
       .where(eq(companyProfiles.userId, userId));
-      
-    return profiles;
   }
   
   async getCompanyProfile(id: number): Promise<CompanyProfile | undefined> {
@@ -116,11 +118,9 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile> {
-    // If this is the first profile for this user, make it default
-    const existingProfiles = await this.getCompanyProfiles(profile.userId);
-    const isDefault = existingProfiles.length === 0 ? true : profile.isDefault || false;
+    const { isDefault = false } = profile;
     
-    // If we're setting this profile as default, unset any existing default
+    // If this is set as default, unset any existing default profile
     if (isDefault) {
       await db
         .update(companyProfiles)
@@ -143,9 +143,9 @@ export class DatabaseStorage implements IStorage {
   
   async updateCompanyProfile(id: number, profile: Partial<InsertCompanyProfile>): Promise<CompanyProfile> {
     const existingProfile = await this.getCompanyProfile(id);
-    if (!existingProfile) throw new Error(`Company profile with ID ${id} not found`);
+    if (!existingProfile) throw new Error("Company profile not found");
     
-    // If we're setting this profile as default, unset any existing default
+    // If setting as default, unset any other default profile
     if (profile.isDefault) {
       await db
         .update(companyProfiles)
@@ -154,7 +154,6 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(companyProfiles.userId, existingProfile.userId),
             eq(companyProfiles.isDefault, true),
-            // Not the current profile
             ne(companyProfiles.id, id)
           )
         );
@@ -171,9 +170,9 @@ export class DatabaseStorage implements IStorage {
   
   async deleteCompanyProfile(id: number): Promise<void> {
     const profile = await this.getCompanyProfile(id);
-    if (!profile) throw new Error(`Company profile with ID ${id} not found`);
+    if (!profile) throw new Error("Company profile not found");
     
-    // Check if this profile is used in any invoices
+    // Check if profile is being used in any invoices
     const [invoiceUsingProfile] = await db
       .select()
       .from(invoices)
@@ -181,10 +180,10 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
       
     if (invoiceUsingProfile) {
-      throw new Error("Cannot delete company profile that is used in invoices");
+      throw new Error("Cannot delete company profile that is being used in invoices");
     }
     
-    // If we're deleting the default profile, make another one default
+    // If this was the default profile, set another profile as default
     if (profile.isDefault) {
       const otherProfiles = await db
         .select()
@@ -196,7 +195,7 @@ export class DatabaseStorage implements IStorage {
           )
         )
         .limit(1);
-        
+
       if (otherProfiles.length > 0) {
         await db
           .update(companyProfiles)
@@ -212,12 +211,10 @@ export class DatabaseStorage implements IStorage {
   
   // Client methods
   async getClients(userId: number): Promise<Client[]> {
-    const clientsList = await db
+    return await db
       .select()
       .from(clients)
       .where(eq(clients.userId, userId));
-      
-    return clientsList;
   }
   
   async getClient(id: number): Promise<Client | undefined> {
@@ -249,20 +246,6 @@ export class DatabaseStorage implements IStorage {
   }
   
   async deleteClient(id: number): Promise<void> {
-    const client = await this.getClient(id);
-    if (!client) throw new Error(`Client with ID ${id} not found`);
-    
-    // Check if this client is used in any invoices
-    const [invoiceUsingClient] = await db
-      .select()
-      .from(invoices)
-      .where(eq(invoices.clientId, id))
-      .limit(1);
-      
-    if (invoiceUsingClient) {
-      throw new Error("Cannot delete client that is used in invoices");
-    }
-    
     await db
       .delete(clients)
       .where(eq(clients.id, id));
@@ -270,13 +253,10 @@ export class DatabaseStorage implements IStorage {
   
   // Invoice methods
   async getInvoices(userId: number): Promise<Invoice[]> {
-    const invoicesList = await db
+    return await db
       .select()
       .from(invoices)
-      .where(eq(invoices.userId, userId))
-      .orderBy(desc(invoices.createdAt));
-      
-    return invoicesList;
+      .where(eq(invoices.userId, userId));
   }
   
   async getInvoice(id: number): Promise<Invoice | undefined> {
@@ -294,9 +274,7 @@ export class DatabaseStorage implements IStorage {
       .values({
         ...invoice,
         subtotal: "0",
-        tax: "0",
-        total: "0",
-        pdfUrl: null
+        total: "0"
       })
       .returning();
       
@@ -306,7 +284,7 @@ export class DatabaseStorage implements IStorage {
   async updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice> {
     const [updatedInvoice] = await db
       .update(invoices)
-      .set({ ...invoice, updatedAt: new Date() })
+      .set(invoice)
       .where(eq(invoices.id, id))
       .returning();
       
@@ -314,120 +292,57 @@ export class DatabaseStorage implements IStorage {
   }
   
   async deleteInvoice(id: number): Promise<void> {
-    const invoice = await this.getInvoice(id);
-    if (!invoice) throw new Error(`Invoice with ID ${id} not found`);
-    
-    // Delete associated invoice items
-    await db
-      .delete(invoiceItems)
-      .where(eq(invoiceItems.invoiceId, id));
-      
     await db
       .delete(invoices)
       .where(eq(invoices.id, id));
   }
   
-  // Invoice items methods
+  // Invoice item methods
   async getInvoiceItems(invoiceId: number): Promise<InvoiceItem[]> {
-    const items = await db
+    return await db
       .select()
       .from(invoiceItems)
       .where(eq(invoiceItems.invoiceId, invoiceId));
-      
-    return items;
   }
   
   async createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem> {
-    // Calculate the amount
     const quantity = parseFloat(item.quantity.toString());
     const unitPrice = parseFloat(item.unitPrice.toString());
-    const discount = item.discount ? parseFloat(item.discount.toString()) : 0;
-    
-    const discountAmount = (unitPrice * quantity * discount) / 100;
-    const amount = (unitPrice * quantity) - discountAmount;
-    
+    const discount = parseFloat(item.discount?.toString() || "0");
+    const amount = (quantity * unitPrice * (1 - discount / 100)).toFixed(2);
+
     const [newItem] = await db
       .insert(invoiceItems)
       .values({
         ...item,
-        amount: amount.toString()
+        amount
       })
       .returning();
       
-    // Recalculate invoice totals
-    await this.recalculateInvoiceTotals(item.invoiceId);
-    
     return newItem;
   }
   
   async updateInvoiceItem(id: number, item: Partial<InsertInvoiceItem>): Promise<InvoiceItem> {
-    const existingItem = await this.getInvoiceItem(id);
-    if (!existingItem) throw new Error(`Invoice item with ID ${id} not found`);
-    
-    // Recalculate the amount if needed
-    let amount = existingItem.amount;
-    
-    if (item.quantity !== undefined || item.unitPrice !== undefined || item.discount !== undefined) {
-      const quantity = item.quantity !== undefined ? 
-        parseFloat(item.quantity.toString()) : 
-        parseFloat(existingItem.quantity.toString());
-        
-      const unitPrice = item.unitPrice !== undefined ? 
-        parseFloat(item.unitPrice.toString()) : 
-        parseFloat(existingItem.unitPrice.toString());
-        
-      const discount = item.discount !== undefined && item.discount !== null ? 
-        parseFloat(item.discount.toString()) : 
-        (existingItem.discount !== null ? parseFloat(existingItem.discount.toString()) : 0);
-      
-      const discountAmount = (unitPrice * quantity * discount) / 100;
-      amount = ((unitPrice * quantity) - discountAmount).toString();
-    }
-    
     const [updatedItem] = await db
       .update(invoiceItems)
-      .set({
-        ...item,
-        amount
-      })
+      .set(item)
       .where(eq(invoiceItems.id, id))
       .returning();
       
-    // Recalculate invoice totals
-    await this.recalculateInvoiceTotals(existingItem.invoiceId);
-    
     return updatedItem;
   }
   
   async deleteInvoiceItem(id: number): Promise<void> {
-    const item = await this.getInvoiceItem(id);
-    if (!item) throw new Error(`Invoice item with ID ${id} not found`);
-    
     await db
       .delete(invoiceItems)
       .where(eq(invoiceItems.id, id));
-      
-    // Recalculate invoice totals
-    await this.recalculateInvoiceTotals(item.invoiceId);
-  }
-  
-  // Helper method to get a single invoice item
-  private async getInvoiceItem(id: number): Promise<InvoiceItem | undefined> {
-    const [item] = await db
-      .select()
-      .from(invoiceItems)
-      .where(eq(invoiceItems.id, id));
-      
-    return item;
   }
   
   // Subscription plan methods
   async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
-    const plans = await db
+    return await db
       .select()
       .from(subscriptionPlans);
-      
-    return plans;
   }
   
   async getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined> {
@@ -439,24 +354,45 @@ export class DatabaseStorage implements IStorage {
     return plan;
   }
   
-  // Tax rate methods
-  async getTaxRates(): Promise<TaxRate[]> {
-    const rates = await db
-      .select()
-      .from(taxRates);
+  async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    const [newPlan] = await db
+      .insert(subscriptionPlans)
+      .values(plan)
+      .returning();
       
-    return rates;
+    return newPlan;
   }
   
+  async updateSubscriptionPlan(id: string, plan: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan> {
+    const [updatedPlan] = await db
+      .update(subscriptionPlans)
+      .set(plan)
+      .where(eq(subscriptionPlans.id, id))
+      .returning();
+      
+    return updatedPlan;
+  }
+  
+  async deleteSubscriptionPlan(id: string): Promise<void> {
+    await db
+      .delete(subscriptionPlans)
+      .where(eq(subscriptionPlans.id, id));
+  }
+  
+  // Tax rate methods
+  async getTaxRates(): Promise<TaxRate[]> {
+    return await db
+      .select()
+      .from(taxRates);
+  }
+
   async getTaxRatesByCountry(countryCode: string): Promise<TaxRate[]> {
-    const rates = await db
+    return await db
       .select()
       .from(taxRates)
       .where(eq(taxRates.countryCode, countryCode));
-      
-    return rates;
   }
-  
+
   async getDefaultTaxRate(countryCode: string): Promise<TaxRate | undefined> {
     const [rate] = await db
       .select()
@@ -471,22 +407,45 @@ export class DatabaseStorage implements IStorage {
     return rate;
   }
   
+  async getTaxRate(id: number): Promise<TaxRate | undefined> {
+    const [rate] = await db
+      .select()
+      .from(taxRates)
+      .where(eq(taxRates.id, id));
+      
+    return rate;
+  }
+  
+  async createTaxRate(rate: InsertTaxRate): Promise<TaxRate> {
+    const [newRate] = await db
+      .insert(taxRates)
+      .values(rate)
+      .returning();
+      
+    return newRate;
+  }
+  
+  async updateTaxRate(id: number, rate: Partial<InsertTaxRate>): Promise<TaxRate> {
+    const [updatedRate] = await db
+      .update(taxRates)
+      .set(rate)
+      .where(eq(taxRates.id, id))
+      .returning();
+      
+    return updatedRate;
+  }
+  
+  async deleteTaxRate(id: number): Promise<void> {
+    await db
+      .delete(taxRates)
+      .where(eq(taxRates.id, id));
+  }
+  
   // Invoice template methods
-  async getInvoiceTemplates(includesPremium: boolean): Promise<InvoiceTemplate[]> {
-    if (includesPremium) {
-      const templates = await db
-        .select()
-        .from(invoiceTemplates);
-        
-      return templates;
-    } else {
-      const templates = await db
-        .select()
-        .from(invoiceTemplates)
-        .where(eq(invoiceTemplates.isPremium, false));
-        
-      return templates;
-    }
+  async getInvoiceTemplates(): Promise<InvoiceTemplate[]> {
+    return await db
+      .select()
+      .from(invoiceTemplates);
   }
   
   async getInvoiceTemplate(id: string): Promise<InvoiceTemplate | undefined> {
@@ -498,119 +457,80 @@ export class DatabaseStorage implements IStorage {
     return template;
   }
   
-  // Helper methods
-  private hashPassword(password: string): string {
-    return crypto.createHash('sha256').update(password).digest('hex');
+  async createInvoiceTemplate(template: InsertInvoiceTemplate): Promise<InvoiceTemplate> {
+    const [newTemplate] = await db
+      .insert(invoiceTemplates)
+      .values(template)
+      .returning();
+      
+    return newTemplate;
   }
   
-  private async recalculateInvoiceTotals(invoiceId: number): Promise<void> {
-    const invoice = await this.getInvoice(invoiceId);
-    if (!invoice) return;
-    
-    const items = await this.getInvoiceItems(invoiceId);
-    
-    // Calculate subtotal
-    const subtotal = items.reduce((sum, item) => {
-      return sum + parseFloat(item.amount.toString());
-    }, 0);
-    
-    // Calculate tax
-    const discountAmount = invoice.discount ? parseFloat(invoice.discount.toString()) : 0;
-    const taxableAmount = subtotal - discountAmount;
-    const taxRate = invoice.taxRate ? parseFloat(invoice.taxRate.toString()) : 0;
-    const taxAmount = (taxableAmount * taxRate) / 100;
-    
-    // Calculate total
-    const total = taxableAmount + taxAmount;
-    
-    // Update the invoice
+  async updateInvoiceTemplate(id: string, template: Partial<InsertInvoiceTemplate>): Promise<InvoiceTemplate> {
+    const [updatedTemplate] = await db
+      .update(invoiceTemplates)
+      .set(template)
+      .where(eq(invoiceTemplates.id, id))
+      .returning();
+      
+    return updatedTemplate;
+  }
+  
+  async deleteInvoiceTemplate(id: string): Promise<void> {
     await db
-      .update(invoices)
-      .set({
-        subtotal: subtotal.toString(),
-        tax: taxAmount.toString(),
-        total: total.toString(),
-        updatedAt: new Date()
-      })
-      .where(eq(invoices.id, invoiceId));
+      .delete(invoiceTemplates)
+      .where(eq(invoiceTemplates.id, id));
   }
 
-  // Initialize default data
   async seedDefaultData(): Promise<void> {
-    // Check if subscription plans exist
-    const existingPlans = await this.getSubscriptionPlans();
-    if (existingPlans.length === 0) {
-      // Initialize default subscription plans
-      await db.insert(subscriptionPlans).values([
-        {
-          id: "free",
-          name: "Free Plan",
-          price: "0",
-          interval: "monthly",
-          features: ["5 clients", "10 invoices/month", "Basic templates", "PDF generation"],
-          invoiceQuota: 10,
-          isActive: true
-        },
-        {
-          id: "monthly",
-          name: "Professional",
-          price: "9.99",
-          interval: "monthly",
-          features: ["Unlimited clients", "Unlimited invoices", "All templates", "Excel import", "No branding"],
-          invoiceQuota: -1, // unlimited
-          isActive: true
-        },
-        {
-          id: "yearly",
-          name: "Professional (Yearly)",
-          price: "99.99",
-          interval: "yearly",
-          features: ["Unlimited clients", "Unlimited invoices", "All templates", "Excel import", "No branding", "2 months free"],
-          invoiceQuota: -1, // unlimited
-          isActive: true
-        },
-        {
-          id: "per-invoice",
-          name: "Pay as you go",
-          price: "19.99",
-          interval: "one-time",
-          features: ["10 invoices bundle", "All templates", "Excel import", "No branding", "Valid for 1 month"],
-          invoiceQuota: 10,
-          isActive: true
-        }
-      ]);
+    // Initialize default subscription plans
+    const defaultPlans: InsertSubscriptionPlan[] = [
+      {
+        id: "free",
+        name: "Free Plan",
+        price: "0",
+        interval: "monthly",
+        features: ["5 clients", "10 invoices/month", "Basic templates", "PDF generation"],
+        invoiceQuota: 10,
+        quoteQuota: 5,
+        materialRecordsLimit: 50,
+        includesCentralMasters: false,
+        isActive: true
+      },
+      {
+        id: "monthly",
+        name: "Professional",
+        price: "9.99",
+        interval: "monthly",
+        features: ["Unlimited clients", "Unlimited invoices", "All templates", "Excel import", "No branding"],
+        invoiceQuota: -1,
+        quoteQuota: -1,
+        materialRecordsLimit: -1,
+        includesCentralMasters: true,
+        isActive: true
+      }
+    ];
+
+    // Initialize default tax rates
+    const defaultTaxRates: InsertTaxRate[] = [
+      { country: "United Kingdom", countryCode: "GB", name: "VAT", rate: "20.00", isDefault: true },
+      { country: "United States", countryCode: "US", name: "Sales Tax", rate: "0.00", isDefault: true }
+    ];
+
+    // Insert default data only if it doesn't exist
+    for (const plan of defaultPlans) {
+      const existingPlan = await this.getSubscriptionPlan(plan.id);
+      if (!existingPlan) {
+        await this.createSubscriptionPlan(plan);
+      }
     }
 
-    // Check if tax rates exist
-    const existingTaxRates = await this.getTaxRates();
-    if (existingTaxRates.length === 0) {
-      // Initialize default tax rates
-      await db.insert(taxRates).values([
-        { id: 1, country: "United Kingdom", countryCode: "GB", name: "VAT", rate: "20.00", isDefault: true },
-        { id: 2, country: "United States", countryCode: "US", name: "Sales Tax", rate: "0.00", isDefault: true },
-        { id: 3, country: "Germany", countryCode: "DE", name: "VAT", rate: "19.00", isDefault: true },
-        { id: 4, country: "France", countryCode: "FR", name: "VAT", rate: "20.00", isDefault: true },
-        { id: 5, country: "Japan", countryCode: "JP", name: "Consumption Tax", rate: "10.00", isDefault: true },
-        { id: 6, country: "Canada", countryCode: "CA", name: "GST", rate: "5.00", isDefault: true },
-        { id: 7, country: "Australia", countryCode: "AU", name: "GST", rate: "10.00", isDefault: true },
-        { id: 8, country: "Italy", countryCode: "IT", name: "VAT", rate: "22.00", isDefault: true },
-        { id: 9, country: "Spain", countryCode: "ES", name: "VAT", rate: "21.00", isDefault: true },
-        { id: 10, country: "Netherlands", countryCode: "NL", name: "VAT", rate: "21.00", isDefault: true },
-      ]);
-    }
-
-    // Check if invoice templates exist
-    const existingTemplates = await this.getInvoiceTemplates(true);
-    if (existingTemplates.length === 0) {
-      // Initialize invoice templates
-      await db.insert(invoiceTemplates).values([
-        { id: "classic", name: "Classic", previewUrl: "https://images.unsplash.com/photo-1616531770192-6eaea74c2456", isDefault: true, isPremium: false },
-        { id: "modern-blue", name: "Modern Blue", previewUrl: "https://images.unsplash.com/photo-1586892477838-2b96e85e0f96", isDefault: false, isPremium: false },
-        { id: "executive", name: "Executive", previewUrl: "https://images.unsplash.com/photo-1618044733300-9472054094ee", isDefault: false, isPremium: true },
-        { id: "minimal", name: "Minimal", previewUrl: "https://images.unsplash.com/photo-1636633762833-5d1658f1e29b", isDefault: false, isPremium: false },
-        { id: "dynamic", name: "Dynamic", previewUrl: "https://images.unsplash.com/photo-1586282391129-76a6df230234", isDefault: false, isPremium: true },
-        { id: "geometric", name: "Geometric", previewUrl: "https://images.unsplash.com/photo-1542621334-a254cf47733d", isDefault: false, isPremium: true },
-      ]);
+    for (const taxRate of defaultTaxRates) {
+      const existingRates = await this.getTaxRatesByCountry(taxRate.countryCode);
+      const rateExists = existingRates.some(rate => rate.name === taxRate.name);
+      if (!rateExists) {
+        await this.createTaxRate(taxRate);
+      }
     }
   }
 }

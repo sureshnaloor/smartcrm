@@ -423,3 +423,7 @@ export type InsertTaxRate = z.infer<typeof insertTaxRateSchema>;
 
 export type InvoiceTemplate = typeof invoiceTemplates.$inferSelect;
 export type InsertInvoiceTemplate = z.infer<typeof insertInvoiceTemplateSchema>;
+
+export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
+export type QuotationStatus = "draft" | "sent" | "accepted" | "declined" | "expired"; 
+export type TemplateType = "invoice" | "quote" | "both";
