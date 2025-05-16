@@ -14,6 +14,7 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import path from "path";
 import fs from "fs";
+import session from "express-session";
 
 // Setup multer for file uploads
 const upload = multer({ 
@@ -24,19 +25,17 @@ const upload = multer({
 });
 
 // Helper for authentication
-const authenticate = async (req: Request, res: Response): Promise<number | undefined> => {
+const authenticate = async (req: Request & { session?: session.Session & { userId?: number } }, res: Response): Promise<number | undefined> => {
   const userId = req.session?.userId;
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
     return undefined;
   }
-  
   const user = await storage.getUserById(userId);
   if (!user) {
     res.status(401).json({ message: "Unauthorized" });
     return undefined;
   }
-  
   return userId;
 };
 
@@ -58,7 +57,7 @@ const checkQuoteQuota = async (userId: number, res: Response): Promise<boolean> 
   }
   
   // Check if user has exceeded their quota
-  if (user.quoteQuota !== -1 && user.quotesUsed >= user.quoteQuota) {
+  if (user.quoteQuota !== -1 && (user.quotesUsed ?? 0) >= (user.quoteQuota ?? 0)) {
     res.status(403).json({ message: "You have reached your quote quota for this period" });
     return false;
   }
@@ -87,7 +86,7 @@ const checkMaterialUsageQuota = async (userId: number, res: Response): Promise<b
   }
   
   // Check if user has exceeded their material usage quota
-  if (plan.materialRecordsLimit !== -1 && user.materialRecordsUsed >= plan.materialRecordsLimit) {
+  if (plan.materialRecordsLimit !== -1 && (user.materialRecordsUsed ?? 0) >= (plan.materialRecordsLimit ?? 0)) {
     res.status(403).json({ message: "You have reached your material usage quota for this period" });
     return false;
   }
@@ -99,7 +98,7 @@ const checkMaterialUsageQuota = async (userId: number, res: Response): Promise<b
 const handleValidation = <T>(schema: any, data: T): T => {
   try {
     return schema.parse(data);
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof ZodError) {
       const validationError = fromZodError(error);
       throw new Error(validationError.message);

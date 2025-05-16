@@ -33,21 +33,21 @@ export class DatabaseStorage implements IStorage {
       quoteQuota: 10,
       quotesUsed: 0,
       materialRecordsUsed: 0,
-      subscriptionStatus: "active"
+      subscriptionStatus: "active" as const
     };
     
     const [user] = await db.insert(users).values(newUser).returning();
-    return user;
+    return user as User;
   }
   
   async getUserById(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return user as User | undefined;
   }
   
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    return user as User | undefined;
   }
   
   async updateUserSubscription(userId: number, planId: string, quota: number): Promise<User> {
@@ -63,13 +63,13 @@ export class DatabaseStorage implements IStorage {
         quoteQuota: quota,
         quotesUsed: 0,
         materialRecordsUsed: 0,
-        subscriptionStatus: "active",
+        subscriptionStatus: "active" as const,
         subscriptionExpiresAt
       })
       .where(eq(users.id, userId))
       .returning();
       
-    return user;
+    return user as User;
   }
   
   async incrementInvoiceUsage(userId: number): Promise<void> {
@@ -253,10 +253,11 @@ export class DatabaseStorage implements IStorage {
   
   // Invoice methods
   async getInvoices(userId: number): Promise<Invoice[]> {
-    return await db
+    const results = await db
       .select()
       .from(invoices)
       .where(eq(invoices.userId, userId));
+    return results as Invoice[];
   }
   
   async getInvoice(id: number): Promise<Invoice | undefined> {
@@ -264,8 +265,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(invoices)
       .where(eq(invoices.id, id));
-      
-    return invoice;
+    return invoice as Invoice | undefined;
   }
   
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
@@ -277,8 +277,7 @@ export class DatabaseStorage implements IStorage {
         total: "0"
       })
       .returning();
-      
-    return newInvoice;
+    return newInvoice as Invoice;
   }
   
   async updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice> {

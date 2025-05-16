@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CompanyTerm } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -57,12 +58,12 @@ export default function TermsPage() {
 
   // Filter terms based on search term
   const filteredCompanyTerms = companyTerms?.filter(
-    (term) => term.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (term: CompanyTerm) => term.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
               term.content?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredMasterTerms = masterTerms?.filter(
-    (term) => term.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (term: CompanyTerm) => term.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
               term.content?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -167,7 +168,7 @@ export default function TermsPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {filteredCompanyTerms.map((term) => (
+                  {filteredCompanyTerms.map((term: CompanyTerm) => (
                     <Card key={term.id} className="overflow-hidden">
                       <div className="flex justify-between items-start p-6">
                         <div>
@@ -247,7 +248,7 @@ export default function TermsPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {filteredMasterTerms.map((term) => (
+                  {filteredMasterTerms.map((term: CompanyTerm) => (
                     <Card key={term.id} className="overflow-hidden">
                       <div className="flex justify-between items-start p-6">
                         <div>

@@ -16,12 +16,13 @@ import path from "path";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import crypto from "crypto";
+import session from "express-session";
 
 // Setup multer for file uploads
 const upload = multer({ dest: "uploads/" });
 
 // Helper for authentication
-const authenticate = async (req: Request, res: Response): Promise<number | undefined> => {
+const authenticate = async (req: Request & { session?: session.Session & { userId?: number } }, res: Response): Promise<number | undefined> => {
   const userId = req.session?.userId;
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
@@ -55,7 +56,7 @@ const checkInvoiceQuota = async (userId: number, res: Response): Promise<boolean
   }
   
   // Check if user has exceeded their quota
-  if (user.invoiceQuota !== -1 && user.invoicesUsed >= user.invoiceQuota) {
+  if (user.invoiceQuota !== -1 && (user.invoicesUsed ?? 0) >= (user.invoiceQuota ?? 0)) {
     res.status(403).json({ message: "You have reached your invoice quota for this period" });
     return false;
   }
@@ -83,9 +84,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register quotation related routes
   registerQuotationRoutes(app);
   // Use sessions
-  app.use((req, res, next) => {
+  app.use((req: Request & { session?: session.Session & { userId?: number } }, res, next) => {
     if (!req.session) {
-      req.session = {};
+      req.session = {} as session.Session & { userId?: number };
     }
     next();
   });
@@ -100,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Auth routes
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", async (req: Request & { session?: session.Session & { userId?: number } }, res) => {
     try {
       const userData = handleValidation(insertUserSchema, req.body);
       
@@ -117,15 +118,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { passwordHash, ...userWithoutPassword } = user;
       
       // Set session
-      req.session.userId = user.id;
+      req.session!.userId = user.id;
       
       res.status(201).json(userWithoutPassword);
-    } catch (error) {
+    } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
   });
   
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", async (req: Request & { session?: session.Session & { userId?: number } }, res) => {
     try {
       const { email, password } = req.body;
       
@@ -152,117 +153,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.userId = user.id;
       
       res.json(userWithoutPassword);
-    } catch (error) {
+    } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
   });
   
-  app.post("/api/auth/logout", (req, res) => {
+  app.post("/api/auth/logout", (req: Request & { session?: session.Session }, res) => {
     req.session = null;
     res.json({ message: "Logged out successfully" });
   });
   
-  app.get("/api/auth/me", async (req, res) => {
-    const userId = await authenticate(req, res);
+  app.get("/api/auth/me", async (req: Request & { session?: session.Session & { userId?: number } }, res: Response) => {
+    const userId = await authenticate(req as Request & { session?: session.Session & { userId?: number } }, res);
     if (!userId) return;
-    
     const user = await storage.getUserById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    
-    // Remove sensitive data
     const { passwordHash, ...userWithoutPassword } = user;
-    
     res.json(userWithoutPassword);
   });
   
   // Company profiles routes
-  app.get("/api/company-profiles", async (req, res) => {
+  app.get("/api/company-profiles", async (req: Request & { session?: session.Session & { userId?: number } }, res: Response) => {
     const userId = await authenticate(req, res);
     if (!userId) return;
-    
     const profiles = await storage.getCompanyProfiles(userId);
     res.json(profiles);
   });
   
-  app.get("/api/company-profiles/:id", async (req, res) => {
+  app.get("/api/company-profiles/:id", async (req: Request & { session?: session.Session & { userId?: number } }, res: Response) => {
     const userId = await authenticate(req, res);
     if (!userId) return;
-    
     const profileId = parseInt(req.params.id, 10);
     const profile = await storage.getCompanyProfile(profileId);
-    
     if (!profile) {
       return res.status(404).json({ message: "Company profile not found" });
     }
-    
     if (profile.userId !== userId) {
       return res.status(403).json({ message: "Access denied" });
     }
-    
     res.json(profile);
   });
   
-  app.post("/api/company-profiles", async (req, res) => {
+  app.post("/api/company-profiles", async (req: Request & { session?: session.Session & { userId?: number } }, res: Response) => {
     const userId = await authenticate(req, res);
     if (!userId) return;
-    
     try {
       const profileData = handleValidation(insertCompanyProfileSchema, {
         ...req.body,
         userId
       });
-      
       const profile = await storage.createCompanyProfile(profileData);
       res.status(201).json(profile);
-    } catch (error) {
+    } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
   });
   
-  app.put("/api/company-profiles/:id", async (req, res) => {
+  app.put("/api/company-profiles/:id", async (req: Request & { session?: session.Session & { userId?: number } }, res: Response) => {
     const userId = await authenticate(req, res);
     if (!userId) return;
-    
     const profileId = parseInt(req.params.id, 10);
     const profile = await storage.getCompanyProfile(profileId);
-    
     if (!profile) {
       return res.status(404).json({ message: "Company profile not found" });
     }
-    
     if (profile.userId !== userId) {
       return res.status(403).json({ message: "Access denied" });
     }
-    
     try {
       const updatedProfile = await storage.updateCompanyProfile(profileId, req.body);
       res.json(updatedProfile);
-    } catch (error) {
+    } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
   });
   
-  app.delete("/api/company-profiles/:id", async (req, res) => {
+  app.delete("/api/company-profiles/:id", async (req: Request & { session?: session.Session & { userId?: number } }, res: Response) => {
     const userId = await authenticate(req, res);
     if (!userId) return;
-    
     const profileId = parseInt(req.params.id, 10);
     const profile = await storage.getCompanyProfile(profileId);
-    
     if (!profile) {
       return res.status(404).json({ message: "Company profile not found" });
     }
-    
     if (profile.userId !== userId) {
       return res.status(403).json({ message: "Access denied" });
     }
-    
     try {
       await storage.deleteCompanyProfile(profileId);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
   });
@@ -689,3 +671,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
+
+// In all catch blocks, type error as 'any' to safely access error.message

@@ -35,7 +35,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { InvoiceWithRelations } from "@/types";
+import { InvoiceWithRelations} from "@/types";
+import { Invoice, Client } from "@shared/schema";
 
 export default function InvoicesPage() {
   const [, navigate] = useLocation();
@@ -45,12 +46,12 @@ export default function InvoicesPage() {
   const [invoiceToDelete, setInvoiceToDelete] = useState<number | null>(null);
 
   // Fetch invoices
-  const { data: invoices = [], isLoading } = useQuery({
+  const { data: invoices = [], isLoading } = useQuery<InvoiceWithRelations[]>({
     queryKey: ["/api/invoices"],
   });
 
   // Fetch clients for displaying client names
-  const { data: clients = [] } = useQuery({
+  const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 

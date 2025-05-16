@@ -23,6 +23,15 @@ import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
+interface Document {
+  id: number;
+  name: string;
+  type: string;
+  mimeType: string;
+  fileSize: number;
+  createdAt: string;
+}
+
 export default function DocumentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
@@ -30,7 +39,7 @@ export default function DocumentsPage() {
   const queryClient = useQueryClient();
 
   // Get all documents
-  const { data: documents, isLoading } = useQuery({
+  const { data: documents, isLoading } = useQuery<Document[]>({
     queryKey: ["/api/documents"],
     queryFn: () => apiRequest("GET", "/api/documents").then(res => res.json()),
   });

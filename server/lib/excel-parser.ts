@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
-import { InsertInvoiceItem } from '@shared/schema';
+import type { WorkBook, WorkSheet } from "xlsx";
+import type { InsertInvoiceItem } from "@shared/schema";
 
 // Expected column names in the Excel file
 const EXPECTED_COLUMNS = {
@@ -31,15 +32,15 @@ export async function parseExcelFile(filePath: string): Promise<InsertInvoiceIte
     }
     
     // Map column headers to expected fields
-    const columnMap = mapColumns(rawData[0]);
+    const columnMap = mapColumns(rawData[0] as Record<string, any>);
     
     // Convert raw data to invoice items
     const invoiceItems: InsertInvoiceItem[] = rawData.map((row) => {
       // Extract values from the row using mapped column headers
-      const description = extractStringValue(row, columnMap.description);
-      const quantity = extractNumberValue(row, columnMap.quantity);
-      const unitPrice = extractNumberValue(row, columnMap.unitPrice);
-      const discount = extractNumberValue(row, columnMap.discount, true); // Optional field
+      const description = extractStringValue(row as Record<string, any>, columnMap.description);
+      const quantity = extractNumberValue(row as Record<string, any>, columnMap.quantity);
+      const unitPrice = extractNumberValue(row as Record<string, any>, columnMap.unitPrice);
+      const discount = extractNumberValue(row as Record<string, any>, columnMap.discount, true); // Optional field
       
       // Validate required fields
       if (!description) {
@@ -72,7 +73,11 @@ export async function parseExcelFile(filePath: string): Promise<InsertInvoiceIte
     
     return invoiceItems;
   } catch (error) {
-    throw new Error(`Failed to parse Excel file: ${error.message}`);
+    if (error instanceof Error) {
+      throw new Error(`Failed to parse Excel file: ${error.message}`);
+    } else {
+      throw new Error('Failed to parse Excel file: Unknown error');
+    }
   }
 }
 

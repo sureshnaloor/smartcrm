@@ -38,14 +38,14 @@ export interface IStorage {
   getCompanyProfiles(userId: number): Promise<CompanyProfile[]>;
   getCompanyProfile(id: number): Promise<CompanyProfile | undefined>;
   getDefaultCompanyProfile(userId: number): Promise<CompanyProfile | undefined>;
-  createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile>;
+  createCompanyProfile(profile: InsertCompanyProfile & { userId: number }): Promise<CompanyProfile>;
   updateCompanyProfile(id: number, profile: Partial<InsertCompanyProfile>): Promise<CompanyProfile>;
   deleteCompanyProfile(id: number): Promise<void>;
   
   // Client methods
   getClients(userId: number): Promise<Client[]>;
   getClient(id: number): Promise<Client | undefined>;
-  createClient(client: InsertClient): Promise<Client>;
+  createClient(client: InsertClient & { userId: number }): Promise<Client>;
   updateClient(id: number, client: Partial<InsertClient>): Promise<Client>;
   deleteClient(id: number): Promise<void>;
   getCentralRepoClients(): Promise<Client[]>;
@@ -116,7 +116,16 @@ export interface IStorage {
   // Invoice methods
   getInvoices(userId: number): Promise<Invoice[]>;
   getInvoice(id: number): Promise<Invoice | undefined>;
-  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  createInvoice(invoice: InsertInvoice & { 
+    userId: number;
+    companyProfileId: number;
+    clientId: number;
+    dueDate?: Date;
+    discount?: string;
+    taxRate?: string;
+    quotationId?: number;
+    invoiceDate?: Date;
+  }): Promise<Invoice>;
   updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice>;
   deleteInvoice(id: number): Promise<void>;
   
@@ -173,7 +182,7 @@ export class MemStorage implements IStorage {
       id: "free",
       name: "Free Plan",
       price: "0",
-      interval: "monthly",
+      interval: "monthly" as const,
       features: ["5 clients", "10 invoices/month", "Basic templates", "PDF generation"],
       invoiceQuota: 10,
       quoteQuota: 5,
@@ -186,7 +195,7 @@ export class MemStorage implements IStorage {
       id: "monthly",
       name: "Professional",
       price: "9.99",
-      interval: "monthly",
+      interval: "monthly" as const,
       features: ["Unlimited clients", "Unlimited invoices", "All templates", "Excel import", "No branding"],
       invoiceQuota: -1,
       quoteQuota: -1,
@@ -199,7 +208,7 @@ export class MemStorage implements IStorage {
       id: "yearly",
       name: "Professional (Yearly)",
       price: "99.99",
-      interval: "yearly",
+      interval: "yearly" as const,
       features: ["Unlimited clients", "Unlimited invoices", "All templates", "Excel import", "No branding", "2 months free"],
       invoiceQuota: -1,
       quoteQuota: -1,
@@ -212,7 +221,7 @@ export class MemStorage implements IStorage {
       id: "per-invoice",
       name: "Pay as you go",
       price: "19.99",
-      interval: "one-time",
+      interval: "one-time" as const,
       features: ["10 invoices bundle", "All templates", "Excel import", "No branding", "Valid for 1 month"],
       invoiceQuota: 10,
       quoteQuota: 5,
@@ -222,22 +231,24 @@ export class MemStorage implements IStorage {
     });
     
     // Initialize default tax rates
-    const defaultTaxRates: InsertTaxRate[] = [
-      { country: "United Kingdom", countryCode: "GB", name: "VAT", rate: "20.00", isDefault: true },
-      { country: "United States", countryCode: "US", name: "Sales Tax", rate: "0.00", isDefault: true },
-      { country: "Germany", countryCode: "DE", name: "VAT", rate: "19.00", isDefault: true },
-      { country: "France", countryCode: "FR", name: "VAT", rate: "20.00", isDefault: true },
-      { country: "Japan", countryCode: "JP", name: "Consumption Tax", rate: "10.00", isDefault: true },
-      { country: "Canada", countryCode: "CA", name: "GST", rate: "5.00", isDefault: true },
-      { country: "Australia", countryCode: "AU", name: "GST", rate: "10.00", isDefault: true },
-      { country: "Italy", countryCode: "IT", name: "VAT", rate: "22.00", isDefault: true },
-      { country: "Spain", countryCode: "ES", name: "VAT", rate: "21.00", isDefault: true },
-      { country: "Netherlands", countryCode: "NL", name: "VAT", rate: "21.00", isDefault: true },
+    const defaultTaxRates = [
+      { name: "Standard Rate", country: "United States", countryCode: "US", rate: "7.5", isDefault: true },
+      { name: "Reduced Rate", country: "United States", countryCode: "US", rate: "5.0", isDefault: false },
+      { name: "Standard Rate", country: "United Kingdom", countryCode: "GB", rate: "20.0", isDefault: true },
+      { name: "Reduced Rate", country: "United Kingdom", countryCode: "GB", rate: "5.0", isDefault: false }
     ];
     
     defaultTaxRates.forEach(taxRate => {
       const id = this.currentTaxRateId++;
-      this.taxRates.set(id, { ...taxRate, id, isDefault: taxRate.isDefault ?? null });
+      const taxRateWithId: TaxRate = {
+        id,
+        name: String(taxRate.name ?? ""),
+        country: String(taxRate.country ?? ""),
+        countryCode: String(taxRate.countryCode ?? ""),
+        rate: String(taxRate.rate ?? "0"),
+        isDefault: Boolean(taxRate.isDefault)
+      };
+      this.taxRates.set(id, taxRateWithId);
     });
     
     // Initialize invoice templates
@@ -273,7 +284,7 @@ export class MemStorage implements IStorage {
       quoteQuota: 5,
       quotesUsed: 0,
       materialRecordsUsed: 0,
-      subscriptionStatus: "active",
+      subscriptionStatus: "active" as const,
       subscriptionExpiresAt: null
     };
     
@@ -298,7 +309,7 @@ export class MemStorage implements IStorage {
       planId,
       invoiceQuota: quota,
       invoicesUsed: 0,
-      subscriptionStatus: "active",
+      subscriptionStatus: "active" as const,
       subscriptionExpiresAt: planId === "per-invoice" 
         ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
         : null
@@ -335,7 +346,7 @@ export class MemStorage implements IStorage {
       .find(profile => profile.userId === userId && profile.isDefault);
   }
   
-  async createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile> {
+  async createCompanyProfile(profile: InsertCompanyProfile & { userId: number }): Promise<CompanyProfile> {
     const id = this.currentCompanyProfileId++;
     
     const existingProfiles = await this.getCompanyProfiles(profile.userId);
@@ -354,8 +365,8 @@ export class MemStorage implements IStorage {
     
     const companyProfile: CompanyProfile = {
       id,
-      name: profile.name,
-      userId: profile.userId,
+      name: String(profile.name ?? null),
+      userId: profile.userId as number,
       email: profile.email ?? null,
       taxId: profile.taxId ?? null,
       address: profile.address ?? null,
@@ -372,7 +383,7 @@ export class MemStorage implements IStorage {
       bankRoutingNumber: profile.bankRoutingNumber ?? null,
       bankSwiftBic: profile.bankSwiftBic ?? null,
       bankIban: profile.bankIban ?? null,
-      isDefault: isDefault
+      isDefault: isDefault as boolean
     };
     
     this.companyProfiles.set(id, companyProfile);
@@ -398,7 +409,26 @@ export class MemStorage implements IStorage {
     
     const updatedProfile: CompanyProfile = {
       ...existingProfile,
-      ...profile
+      ...profile,
+      userId: existingProfile.userId,
+      isDefault: Boolean(profile.isDefault),
+      name: String(profile.name ?? existingProfile.name),
+      email: profile.email ?? existingProfile.email,
+      taxId: profile.taxId ?? existingProfile.taxId,
+      address: profile.address ?? existingProfile.address,
+      city: profile.city ?? existingProfile.city,
+      state: profile.state ?? existingProfile.state,
+      postalCode: profile.postalCode ?? existingProfile.postalCode,
+      country: profile.country ?? existingProfile.country,
+      phone: profile.phone ?? existingProfile.phone,
+      website: profile.website ?? existingProfile.website,
+      logoUrl: profile.logoUrl ?? existingProfile.logoUrl,
+      bankName: profile.bankName ?? existingProfile.bankName,
+      bankAccountName: profile.bankAccountName ?? existingProfile.bankAccountName,
+      bankAccountNumber: profile.bankAccountNumber ?? existingProfile.bankAccountNumber,
+      bankRoutingNumber: profile.bankRoutingNumber ?? existingProfile.bankRoutingNumber,
+      bankSwiftBic: profile.bankSwiftBic ?? existingProfile.bankSwiftBic,
+      bankIban: profile.bankIban ?? existingProfile.bankIban
     };
     
     this.companyProfiles.set(id, updatedProfile);
@@ -444,26 +474,30 @@ export class MemStorage implements IStorage {
     return this.clients.get(id);
   }
   
-  async createClient(client: InsertClient): Promise<Client> {
+  async createClient(client: InsertClient & { userId: number }): Promise<Client> {
     const id = this.currentClientId++;
-    const newClient: Client = {
-      id,
-      name: client.name,
-      userId: client.userId,
-      email: client.email ?? null,
-      taxId: client.taxId ?? null,
-      address: client.address ?? null,
-      city: client.city ?? null,
-      state: client.state ?? null,
-      postalCode: client.postalCode ?? null,
-      country: client.country ?? null,
-      phone: client.phone ?? null,
-      notes: client.notes ?? null,
-      isFromCentralRepo: false
+    const existingClient = await this.getClient(id);
+    if (!existingClient) throw new Error(`Client with ID ${id} not found`);
+    
+    const updatedClient: Client = {
+      ...existingClient,
+      ...client,
+      userId: existingClient.userId,
+      name: String(client.name ?? existingClient.name),
+      email: client.email ?? existingClient.email,
+      taxId: client.taxId ?? existingClient.taxId,
+      address: client.address ?? existingClient.address,
+      city: client.city ?? existingClient.city,
+      state: client.state ?? existingClient.state,
+      postalCode: client.postalCode ?? existingClient.postalCode,
+      country: client.country ?? existingClient.country,
+      phone: client.phone ?? existingClient.phone,
+      notes: client.notes ?? existingClient.notes,
+      isFromCentralRepo: Boolean(client.isFromCentralRepo)
     };
     
-    this.clients.set(id, newClient);
-    return newClient;
+    this.clients.set(id, updatedClient);
+    return updatedClient;
   }
   
   async updateClient(id: number, client: Partial<InsertClient>): Promise<Client> {
@@ -472,7 +506,19 @@ export class MemStorage implements IStorage {
     
     const updatedClient: Client = {
       ...existingClient,
-      ...client
+      ...client,
+      userId: existingClient.userId,
+      name: String(client.name ?? existingClient.name),
+      email: client.email ?? existingClient.email,
+      taxId: client.taxId ?? existingClient.taxId,
+      address: client.address ?? existingClient.address,
+      city: client.city ?? existingClient.city,
+      state: client.state ?? existingClient.state,
+      postalCode: client.postalCode ?? existingClient.postalCode,
+      country: client.country ?? existingClient.country,
+      phone: client.phone ?? existingClient.phone,
+      notes: client.notes ?? existingClient.notes,
+      isFromCentralRepo: Boolean(client.isFromCentralRepo)
     };
     
     this.clients.set(id, updatedClient);
@@ -504,7 +550,16 @@ export class MemStorage implements IStorage {
     return this.invoices.get(id);
   }
   
-  async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+  async createInvoice(invoice: InsertInvoice & { 
+    userId: number;
+    companyProfileId: number;
+    clientId: number;
+    dueDate?: Date;
+    discount?: string;
+    taxRate?: string;
+    quotationId?: number;
+    invoiceDate?: Date;
+  }): Promise<Invoice> {
     const id = this.currentInvoiceId++;
     const now = new Date();
     
@@ -512,11 +567,11 @@ export class MemStorage implements IStorage {
       id,
       createdAt: now,
       status: invoice.status ?? "draft",
-      userId: invoice.userId,
+      userId: invoice.userId as number,
       country: invoice.country,
-      companyProfileId: invoice.companyProfileId,
+      companyProfileId: invoice.companyProfileId as number,
       notes: invoice.notes ?? null,
-      clientId: invoice.clientId,
+      clientId: invoice.clientId as number,
       currency: invoice.currency,
       templateId: invoice.templateId ?? null,
       subtotal: "0",
@@ -524,13 +579,13 @@ export class MemStorage implements IStorage {
       total: "0",
       updatedAt: now,
       pdfUrl: null,
-      dueDate: invoice.dueDate ?? null,
-      discount: invoice.discount ?? null,
-      taxRate: invoice.taxRate ?? null,
+      dueDate: invoice.dueDate instanceof Date ? invoice.dueDate : null,
+      discount: invoice.discount as string ?? null,
+      taxRate: invoice.taxRate as string ?? null,
       terms: invoice.terms ?? null,
-      quotationId: invoice.quotationId ?? null,
+      quotationId: invoice.quotationId ? Number(invoice.quotationId) : null,
       invoiceNumber: invoice.invoiceNumber ?? null,
-      invoiceDate: invoice.invoiceDate ?? now
+      invoiceDate: invoice.invoiceDate instanceof Date ? invoice.invoiceDate : now
     };
     
     this.invoices.set(id, newInvoice);
@@ -544,6 +599,22 @@ export class MemStorage implements IStorage {
     const updatedInvoice: Invoice = {
       ...existingInvoice,
       ...invoice,
+      userId: existingInvoice.userId,
+      companyProfileId: existingInvoice.companyProfileId,
+      clientId: existingInvoice.clientId,
+      status: invoice.status ?? existingInvoice.status,
+      country: invoice.country ?? existingInvoice.country,
+      notes: invoice.notes ?? existingInvoice.notes,
+      currency: invoice.currency ?? existingInvoice.currency,
+      templateId: invoice.templateId ?? existingInvoice.templateId,
+      discount: invoice.discount?.toString() ?? existingInvoice.discount,
+      tax: invoice.tax?.toString() ?? existingInvoice.tax,
+      taxRate: invoice.taxRate?.toString() ?? existingInvoice.taxRate,
+      terms: invoice.terms ?? existingInvoice.terms,
+      quotationId: invoice.quotationId ? Number(invoice.quotationId) : existingInvoice.quotationId,
+      invoiceNumber: invoice.invoiceNumber ?? existingInvoice.invoiceNumber,
+      invoiceDate: invoice.invoiceDate instanceof Date ? new Date(invoice.invoiceDate) : existingInvoice.invoiceDate,
+      dueDate: invoice.dueDate instanceof Date ? new Date(invoice.dueDate) : existingInvoice.dueDate,
       updatedAt: new Date()
     };
     
@@ -582,17 +653,17 @@ export class MemStorage implements IStorage {
     const id = this.currentInvoiceItemId++;
     const newItem: InvoiceItem = {
       id,
-      description: item.description,
-      discount: item.discount ?? null,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
+      description: String(item.description),
+      discount: item.discount?.toString() ?? "0",
+      quantity: item.quantity.toString(),
+      unitPrice: item.unitPrice.toString(),
       amount,
-      invoiceId: item.invoiceId,
-      quotationItemId: item.quotationItemId ?? null
+      invoiceId: typeof item.invoiceId === 'number' ? item.invoiceId : Number(item.invoiceId) || 0,
+      quotationItemId: item.quotationItemId ? Number(item.quotationItemId) : null
     };
     
     this.invoiceItems.set(id, newItem);
-    await this.recalculateInvoiceTotals(item.invoiceId);
+    await this.recalculateInvoiceTotals(typeof item.invoiceId === 'number' ? item.invoiceId : Number(item.invoiceId) || 0);
     
     return newItem;
   }
@@ -616,7 +687,12 @@ export class MemStorage implements IStorage {
     const updatedItem: InvoiceItem = {
       ...existingItem,
       ...item,
-      amount
+      discount: item.discount?.toString() ?? existingItem.discount,
+      quantity: item.quantity?.toString() ?? existingItem.quantity,
+      unitPrice: item.unitPrice?.toString() ?? existingItem.unitPrice,
+      amount,
+      invoiceId: item.invoiceId ? Number(item.invoiceId) : existingItem.invoiceId,
+      quotationItemId: item.quotationItemId ? Number(item.quotationItemId) : existingItem.quotationItemId
     };
     
     this.invoiceItems.set(id, updatedItem);
@@ -665,7 +741,7 @@ export class MemStorage implements IStorage {
   }
   
   // Invoice template methods
-  async getInvoiceTemplates(includesPremium: boolean): Promise<InvoiceTemplate[]> {
+  async getInvoiceTemplates(includesPremium: boolean, type?: string): Promise<InvoiceTemplate[]> {
     return Array.from(this.invoiceTemplates.values())
       .filter(template => !template.isPremium || includesPremium);
   }
@@ -679,40 +755,56 @@ export class MemStorage implements IStorage {
     return crypto.createHash('sha256').update(password).digest('hex');
   }
   
-  private async recalculateInvoiceTotals(invoiceId: number): Promise<void> {
-    const invoice = await this.getInvoice(invoiceId);
-    if (!invoice) throw new Error(`Invoice with ID ${invoiceId} not found`);
-    
-    const items = await this.getInvoiceItems(invoiceId);
-    
-    // Calculate subtotal
+  private recalculateInvoiceTotals(invoiceId: number): void {
+    const invoice = Array.from(this.invoices.values()).find(inv => inv.id === invoiceId);
+    if (!invoice) return;
+
+    const items = Array.from(this.invoiceItems.values()).filter(item => item.invoiceId === invoiceId);
     const subtotal = items.reduce((sum, item) => {
-      return sum + parseFloat(item.amount.toString());
+      const itemTotal = Number(item.quantity) * Number(item.unitPrice);
+      const discount = Number(item.discount) || 0;
+      return sum + (itemTotal - discount);
     }, 0);
-    
-    // Calculate discount
-    const discountValue = parseFloat(invoice.discount?.toString() || "0");
-    
-    // Get tax rate for this country
-    const taxRate = await this.getDefaultTaxRate(invoice.country);
-    const taxRateValue = taxRate ? parseFloat(taxRate.rate.toString()) : 0;
-    
-    // Calculate tax and total
-    const taxableAmount = subtotal - discountValue;
-    const taxAmount = taxableAmount * (taxRateValue / 100);
-    const total = taxableAmount + taxAmount;
-    
-    // Update invoice
-    const updatedInvoice: Invoice = {
-      ...invoice,
-      subtotal: subtotal.toFixed(2),
-      tax: taxAmount.toFixed(2),
-      taxRate: taxRateValue.toString(),
-      total: total.toFixed(2),
-      updatedAt: new Date()
+
+    const taxAmount = items.reduce((sum, item) => {
+      const itemTotal = Number(item.quantity) * Number(item.unitPrice);
+      const discount = Number(item.discount) || 0;
+      const taxableAmount = itemTotal - discount;
+      const taxRate = invoice.taxRate ? Number(invoice.taxRate) : 0;
+      return sum + (taxableAmount * taxRate / 100);
+    }, 0);
+
+    invoice.subtotal = subtotal.toString();
+    invoice.tax = taxAmount.toString();
+    invoice.total = (subtotal + taxAmount).toString();
+  }
+
+  async createTaxRate(taxRate: Omit<TaxRate, "id">): Promise<TaxRate> {
+    const id = this.getNextId(this.taxRates);
+    const newTaxRate: TaxRate = {
+      id,
+      name: String(taxRate.name),
+      country: String(taxRate.country),
+      countryCode: String(taxRate.countryCode),
+      rate: String(taxRate.rate),
+      isDefault: Boolean(taxRate.isDefault)
     };
-    
-    this.invoices.set(invoiceId, updatedInvoice);
+    this.taxRates.set(id, newTaxRate);
+    return newTaxRate;
+  }
+
+  async seedDefaultData(): Promise<void> {
+    // Add default tax rates
+    const defaultTaxRates = [
+      { name: "Standard Rate", country: "United States", countryCode: "US", rate: "7.5", isDefault: true },
+      { name: "Reduced Rate", country: "United States", countryCode: "US", rate: "5.0", isDefault: false },
+      { name: "Standard Rate", country: "United Kingdom", countryCode: "GB", rate: "20.0", isDefault: true },
+      { name: "Reduced Rate", country: "United Kingdom", countryCode: "GB", rate: "5.0", isDefault: false }
+    ];
+
+    for (const taxRate of defaultTaxRates) {
+      await this.createTaxRate(taxRate);
+    }
   }
 
   // Add missing methods
@@ -757,7 +849,7 @@ export class MemStorage implements IStorage {
     // Implementation for deleting master item
   }
 
-  // Add remaining missing methods with similar stubs
+  // Add remaining missing methods
   async getCompanyItems(userId: number, category?: string): Promise<CompanyItem[]> { return []; }
   async getCompanyItem(id: number): Promise<CompanyItem | undefined> { return undefined; }
   async createCompanyItem(item: InsertCompanyItem): Promise<CompanyItem> { throw new Error("Not implemented"); }
@@ -795,19 +887,47 @@ export class MemStorage implements IStorage {
   async deleteQuotationTerm(id: number): Promise<void> {}
   async trackMaterialUsage(usage: InsertMaterialUsage): Promise<MaterialUsage> { throw new Error("Not implemented"); }
   async getMaterialUsage(userId: number): Promise<MaterialUsage[]> { return []; }
+
+  private getNextId(map: Map<number, any>): number {
+    return Math.max(0, ...Array.from(map.keys())) + 1;
+  }
+
+  // Add missing QuotationStorage methods
+  async seedQuotationData(): Promise<void> {
+    // Initialize default quotation data if needed
+    return;
+  }
+  async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    throw new Error("Not implemented");
+  }
+  async updateSubscriptionPlan(id: string, plan: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan> {
+    throw new Error("Not implemented");
+  }
+  async deleteSubscriptionPlan(id: string): Promise<void> {}
+  async getTaxRate(id: number): Promise<TaxRate | undefined> { return undefined; }
+  async createInvoiceTemplate(template: InsertInvoiceTemplate): Promise<InvoiceTemplate> {
+    throw new Error("Not implemented");
+  }
+  async updateInvoiceTemplate(id: string, template: Partial<InsertInvoiceTemplate>): Promise<InvoiceTemplate> {
+    throw new Error("Not implemented");
+  }
+  async deleteInvoiceTemplate(id: string): Promise<void> {}
+  async updateTaxRate(id: number, rate: Partial<InsertTaxRate>): Promise<TaxRate> {
+    throw new Error("Not implemented");
+  }
+  async deleteTaxRate(id: number): Promise<void> {}
 }
 
-import { DatabaseStorage } from "./db-storage";
-
-// Create and export an instance of DatabaseStorage
-export const storage = new QuotationStorage();
+// Create and export an instance of MemStorage
+export const storage = new MemStorage();
 
 // Initialize database with default data
-storage.seedDefaultData().catch((err: Error) => {
-  console.error("Error seeding default data:", err);
-});
-
-// Also seed quotation-specific data
-(storage as QuotationStorage).seedQuotationData().catch((err: Error) => {
-  console.error("Error seeding quotation data:", err);
-});
+(async () => {
+  try {
+    await storage.seedDefaultData();
+    // Cast to unknown first to avoid type checking
+    await (storage as unknown as QuotationStorage).seedQuotationData();
+  } catch (err) {
+    console.error("Error seeding data:", err);
+  }
+})();

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { Quotation } from "@shared/schema";
 import { 
   Plus, 
   Search, 
@@ -90,10 +91,9 @@ export default function QuotationsPage() {
 
   // Filter quotations based on search term
   const filteredQuotations = quotations?.filter(
-    (quotation) => 
-      quotation.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quotation.quotationNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quotation.clientName?.toLowerCase().includes(searchTerm.toLowerCase())
+    (quotation: Quotation) => 
+      quotation.quoteNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      quotation.clientId?.toString().includes(searchTerm.toLowerCase())
   );
 
   // Format currency
@@ -181,21 +181,21 @@ export default function QuotationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredQuotations.map((quotation) => (
+                  {filteredQuotations.map((quotation: Quotation) => (
                     <tr key={quotation.id} className="border-b hover:bg-muted/50">
                       <td className="py-3 px-2">
-                        <div className="font-medium">{quotation.title}</div>
+                        <div className="font-medium">{quotation.quoteNumber}</div>
                         <div className="text-xs text-muted-foreground">
-                          {quotation.quotationNumber || 'No reference number'}
+                          {quotation.quoteNumber || 'No reference number'}
                         </div>
                       </td>
                       <td className="py-3 px-2">
-                        {quotation.clientName || 'No client'}
+                        {quotation.clientId?.toString() || 'No client'}
                       </td>
                       <td className="py-3 px-2">
                         <div className="flex items-center">
                           <CalendarIcon className="mr-2 h-3 w-3 text-muted-foreground" />
-                          <span>{quotation.date ? format(new Date(quotation.date), "MMM d, yyyy") : "No date"}</span>
+                          <span>{quotation.quoteDate ? format(new Date(quotation.quoteDate), "MMM d, yyyy") : "No date"}</span>
                         </div>
                         <div className="flex items-center text-xs text-muted-foreground">
                           <Clock className="mr-2 h-3 w-3" />
@@ -203,7 +203,7 @@ export default function QuotationsPage() {
                         </div>
                       </td>
                       <td className="py-3 px-2 text-right">
-                        {formatCurrency(quotation.totalAmount || 0)}
+                        {formatCurrency(Number(quotation.total) || 0)}
                       </td>
                       <td className="py-3 px-2 text-right">
                         <Badge variant={

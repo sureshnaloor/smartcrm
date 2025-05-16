@@ -1,6 +1,7 @@
+import type PDFKit from "pdfkit";
+import type { Invoice, CompanyProfile, Client, InvoiceItem, InvoiceTemplate } from "@shared/schema";
 import PDFDocument from 'pdfkit';
-import { Invoice, CompanyProfile, Client, InvoiceItem, InvoiceTemplate } from '@shared/schema';
-import { formatDate } from './utils';
+// Remove import since formatDate is defined in this file
 
 // Helper function to format currency amounts
 function formatCurrency(amount: number | string, currency: string = 'USD'): string {
@@ -57,7 +58,7 @@ export async function generatePdf(
       const chunks: Buffer[] = [];
 
       // Collect PDF data chunks
-      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
       
       // Resolve with the complete PDF buffer when done
       doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -449,7 +450,6 @@ function generateFooter(doc: PDFKit.PDFDocument, invoice: Invoice, companyProfil
 // Format date helper
 function formatDate(date: Date | string, format: string = 'PPP'): string {
   if (!date) return '';
-  
   try {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return dateObj.toLocaleDateString('en-US', {
@@ -457,8 +457,9 @@ function formatDate(date: Date | string, format: string = 'PPP'): string {
       month: 'long',
       day: 'numeric',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error formatting date:', error);
     return '';
   }
 }
+// In all catch blocks, type error as 'any' to safely access error.message

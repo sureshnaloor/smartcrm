@@ -45,6 +45,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+interface Client {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  country?: string;
+  taxId?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  notes?: string;
+}
+
 export default function ClientsPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -54,7 +68,7 @@ export default function ClientsPage() {
   const [viewClient, setViewClient] = useState<any | null>(null);
 
   // Fetch clients
-  const { data: clients = [], isLoading } = useQuery({
+  const { data: clients = [], isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 

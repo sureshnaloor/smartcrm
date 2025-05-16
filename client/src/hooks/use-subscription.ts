@@ -14,9 +14,9 @@ export function useSubscription() {
   // Calculate subscription status
   const subscriptionStatus: SubscriptionStatus | null = user ? {
     planId: user.planId,
-    planName: getPlanName(user.planId, plans),
-    invoicesUsed: user.invoicesUsed,
-    invoiceQuota: user.invoiceQuota,
+    planName: getPlanName(user.planId, plans as any[]),
+    invoicesUsed: user.invoicesUsed ?? 0,
+    invoiceQuota: user.invoiceQuota ?? 0,
     isUnlimited: user.invoiceQuota === -1,
     expiresAt: user.subscriptionExpiresAt ? new Date(user.subscriptionExpiresAt) : null,
   } : null;

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/tabs";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { CompanyItem, MasterItem } from "@shared/schema";
 
 export default function MaterialsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,13 +58,13 @@ export default function MaterialsPage() {
 
   // Filter items based on search term
   const filteredCompanyItems = companyItems?.filter(
-    (item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item: CompanyItem) => item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
               item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
               item.code?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredMasterItems = masterItems?.filter(
-    (item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item: MasterItem) => item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
               item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
               item.code?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -181,7 +182,7 @@ export default function MaterialsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredCompanyItems.map((item) => (
+                      {filteredCompanyItems.map((item: CompanyItem) => (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.code || "-"}</TableCell>
                           <TableCell>{item.name}</TableCell>
@@ -190,12 +191,12 @@ export default function MaterialsPage() {
                               {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                             </Badge>
                           </TableCell>
-                          <TableCell>{item.unit}</TableCell>
+                          <TableCell>{item.unitOfMeasure}</TableCell>
                           <TableCell className="text-right">
                             {new Intl.NumberFormat("en-US", {
                               style: "currency",
                               currency: "USD",
-                            }).format(item.unitPrice)}
+                            }).format(Number(item.price))}
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>
@@ -268,7 +269,7 @@ export default function MaterialsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredMasterItems.map((item) => (
+                      {filteredMasterItems.map((item: MasterItem) => (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.code || "-"}</TableCell>
                           <TableCell>{item.name}</TableCell>
@@ -277,12 +278,12 @@ export default function MaterialsPage() {
                               {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                             </Badge>
                           </TableCell>
-                          <TableCell>{item.unit}</TableCell>
+                          <TableCell>{item.unitOfMeasure}</TableCell>
                           <TableCell className="text-right">
                             {new Intl.NumberFormat("en-US", {
                               style: "currency",
                               currency: "USD",
-                            }).format(item.unitPrice)}
+                            }).format(Number(item.defaultPrice))}
                           </TableCell>
                           <TableCell>
                             <Button

@@ -13,11 +13,19 @@
     "test": "npm run test --workspaces"
   },
   "dependencies": {
+    "@radix-ui/react-accordion": "^1.2.10",
+    "@supabase/supabase-js": "^2.49.4",
+    "cmdk": "^1.1.1",
     "drizzle-orm": "^0.39.1",
+    "embla-carousel-react": "^8.6.0",
     "pg": "^8.15.6",
+    "vaul": "^1.1.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/multer": "^1.4.12",
+    "@types/pdfkit": "^0.13.9",
+    "@vitejs/plugin-react": "^4.4.1",
     "typescript": "5.6.3"
   }
-} 
+}

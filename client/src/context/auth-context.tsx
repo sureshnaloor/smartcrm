@@ -63,7 +63,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       toast({
         title: "Login failed",
-        description: error.message || "Invalid email or password",
+        description: error instanceof Error ? error.message : "Invalid email or password",
         variant: "destructive",
       });
       throw error;
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       toast({
         title: "Registration failed",
-        description: error.message || "Could not create account",
+        description: error instanceof Error ? error.message : "Could not create account",
         variant: "destructive",
       });
       throw error;
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       toast({
         title: "Logout failed",
-        description: error.message || "Could not log out",
+        description: error instanceof Error ? error.message : "Could not log out",
         variant: "destructive",
       });
     } finally {

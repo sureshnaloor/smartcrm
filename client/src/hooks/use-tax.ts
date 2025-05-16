@@ -14,7 +14,7 @@ export function useTax(countryCode?: string) {
   });
 
   // Get default tax rate for country
-  const defaultTaxRate = countryTaxRates.find(
+  const defaultTaxRate = (countryTaxRates as TaxRate[]).find(
     (rate: TaxRate) => rate.isDefault && rate.countryCode === countryCode
   );
 

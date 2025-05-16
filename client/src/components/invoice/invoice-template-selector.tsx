@@ -83,7 +83,7 @@ export function InvoiceTemplateSelector({
   }, [user]);
 
   // Get templates
-  const { data: templates = [] } = useQuery({
+  const { data: templates = [] } = useQuery<InvoiceTemplate[]>({
     queryKey: ["/api/invoice-templates"],
   });
 
@@ -96,7 +96,7 @@ export function InvoiceTemplateSelector({
             key={template.id}
             template={template}
             selected={selectedTemplate === template.id}
-            isPremium={template.isPremium}
+            isPremium={template.isPremium ?? false}
             hasPremiumAccess={hasPremiumAccess}
             onSelect={onTemplateChange}
           />

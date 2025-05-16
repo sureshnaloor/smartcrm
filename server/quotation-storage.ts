@@ -64,7 +64,11 @@ export class QuotationStorage extends DatabaseStorage {
       .where(eq(masterItems.isActive, true));
     
     if (category) {
-      query = query.where(eq(masterItems.category, category));
+      // Remove invalid query = query.where(...)
+      query = db
+        .select()
+        .from(masterItems)
+        .where(and(eq(masterItems.isActive, true), eq(masterItems.category, category)));
     }
     
     const items = await query.orderBy(asc(masterItems.name));
@@ -90,9 +94,21 @@ export class QuotationStorage extends DatabaseStorage {
   }
   
   async createMasterItem(item: InsertMasterItem): Promise<MasterItem> {
+    if (!item.name || !item.description || !item.category || !item.unitOfMeasure) {
+      throw new Error("Missing required fields for master item");
+    }
+
     const [createdItem] = await db
       .insert(masterItems)
-      .values(item)
+      .values({
+        name: item.name,
+        description: item.description,
+        category: item.category,
+        unitOfMeasure: item.unitOfMeasure,
+        code: item.code,
+        defaultPrice: item.defaultPrice,
+        isActive: true
+      })
       .returning();
     
     return createdItem;
@@ -101,7 +117,15 @@ export class QuotationStorage extends DatabaseStorage {
   async updateMasterItem(id: number, item: Partial<InsertMasterItem>): Promise<MasterItem> {
     const [updatedItem] = await db
       .update(masterItems)
-      .set(item)
+      .set({
+        name: item.name,
+        description: item.description,
+        category: item.category,
+        unitOfMeasure: item.unitOfMeasure,
+        code: item.code,
+        defaultPrice: item.defaultPrice,
+        isActive: item.isActive
+      })
       .where(eq(masterItems.id, id))
       .returning();
     
@@ -127,7 +151,11 @@ export class QuotationStorage extends DatabaseStorage {
       ));
     
     if (category) {
-      query = query.where(eq(companyItems.category, category));
+      // Remove invalid query = query.where(...)
+      query = db
+        .select()
+        .from(companyItems)
+        .where(and(eq(companyItems.userId, userId), eq(companyItems.isActive, true), eq(companyItems.category, category)));
     }
     
     const items = await query.orderBy(asc(companyItems.name));
@@ -144,6 +172,10 @@ export class QuotationStorage extends DatabaseStorage {
   }
   
   async createCompanyItem(item: InsertCompanyItem): Promise<CompanyItem> {
+    if (!item.name || !item.description || !item.category || !item.unitOfMeasure || !item.price || !item.userId) {
+      throw new Error("Missing required fields for company item");
+    }
+
     // Check if this is from a master item, track usage
     if (item.masterItemId) {
       await this.trackMaterialUsage({
@@ -156,9 +188,16 @@ export class QuotationStorage extends DatabaseStorage {
     const [createdItem] = await db
       .insert(companyItems)
       .values({
-        ...item,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        name: item.name,
+        description: item.description,
+        category: item.category,
+        unitOfMeasure: item.unitOfMeasure,
+        price: item.price,
+        userId: item.userId,
+        masterItemId: item.masterItemId,
+        code: item.code,
+        cost: item.cost,
+        isActive: true
       })
       .returning();
     
@@ -169,8 +208,16 @@ export class QuotationStorage extends DatabaseStorage {
     const [updatedItem] = await db
       .update(companyItems)
       .set({
-        ...item,
-        updatedAt: new Date()
+        name: item.name,
+        description: item.description,
+        category: item.category,
+        unitOfMeasure: item.unitOfMeasure,
+        price: item.price,
+        userId: item.userId,
+        masterItemId: item.masterItemId,
+        code: item.code,
+        cost: item.cost,
+        isActive: item.isActive
       })
       .where(eq(companyItems.id, id))
       .returning();
@@ -194,7 +241,11 @@ export class QuotationStorage extends DatabaseStorage {
       .where(eq(masterTerms.isActive, true));
     
     if (category) {
-      query = query.where(eq(masterTerms.category, category));
+      // Remove invalid query = query.where(...)
+      query = db
+        .select()
+        .from(masterTerms)
+        .where(and(eq(masterTerms.isActive, true), eq(masterTerms.category, category)));
     }
     
     const terms = await query.orderBy(asc(masterTerms.category), asc(masterTerms.title));
@@ -211,9 +262,18 @@ export class QuotationStorage extends DatabaseStorage {
   }
   
   async createMasterTerm(term: InsertMasterTerm): Promise<MasterTerm> {
+    if (!term.category || !term.title || !term.content) {
+      throw new Error("Missing required fields for master term");
+    }
+
     const [createdTerm] = await db
       .insert(masterTerms)
-      .values(term)
+      .values({
+        category: term.category,
+        title: term.title,
+        content: term.content,
+        isActive: true
+      })
       .returning();
     
     return createdTerm;
@@ -222,7 +282,12 @@ export class QuotationStorage extends DatabaseStorage {
   async updateMasterTerm(id: number, term: Partial<InsertMasterTerm>): Promise<MasterTerm> {
     const [updatedTerm] = await db
       .update(masterTerms)
-      .set(term)
+      .set({
+        category: term.category,
+        title: term.title,
+        content: term.content,
+        isActive: term.isActive
+      })
       .where(eq(masterTerms.id, id))
       .returning();
     
@@ -262,12 +327,11 @@ export class QuotationStorage extends DatabaseStorage {
   }
   
   async createCompanyTerm(term: InsertCompanyTerm): Promise<CompanyTerm> {
-    // If this is from a master term, track usage if it has masterTermId
-    if (term.masterTermId) {
-      await this.incrementMaterialUsage(term.userId);
+    if (!term.userId || !term.category || !term.title || !term.content) {
+      throw new Error("Missing required fields for company term");
     }
-    
-    // If marked as default for its category, clear other defaults
+
+    // Clear any existing default term in this category
     if (term.isDefault) {
       await this.clearDefaultCompanyTerm(term.userId, term.category);
     }
@@ -275,9 +339,12 @@ export class QuotationStorage extends DatabaseStorage {
     const [createdTerm] = await db
       .insert(companyTerms)
       .values({
-        ...term,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        userId: term.userId,
+        category: term.category,
+        title: term.title,
+        content: term.content,
+        masterTermId: term.masterTermId,
+        isDefault: term.isDefault || false
       })
       .returning();
     
@@ -285,19 +352,23 @@ export class QuotationStorage extends DatabaseStorage {
   }
   
   async updateCompanyTerm(id: number, term: Partial<InsertCompanyTerm>): Promise<CompanyTerm> {
-    // If being marked as default, clear other defaults
-    if (term.isDefault && term.category) {
+    // If setting as default, clear any existing default term
+    if (term.isDefault) {
       const existingTerm = await this.getCompanyTerm(id);
       if (existingTerm) {
-        await this.clearDefaultCompanyTerm(existingTerm.userId, term.category);
+        await this.clearDefaultCompanyTerm(existingTerm.userId, existingTerm.category);
       }
     }
     
     const [updatedTerm] = await db
       .update(companyTerms)
       .set({
-        ...term,
-        updatedAt: new Date()
+        userId: term.userId,
+        category: term.category,
+        title: term.title,
+        content: term.content,
+        masterTermId: term.masterTermId,
+        isDefault: term.isDefault
       })
       .where(eq(companyTerms.id, id))
       .returning();
@@ -332,7 +403,11 @@ export class QuotationStorage extends DatabaseStorage {
       .where(eq(documents.userId, userId));
     
     if (type) {
-      query = query.where(eq(documents.type, type));
+      // Remove invalid query = query.where(...)
+      query = db
+        .select()
+        .from(documents)
+        .where(and(eq(documents.userId, userId), eq(documents.type, type)));
     }
     
     const docs = await query.orderBy(desc(documents.createdAt));
@@ -461,7 +536,8 @@ export class QuotationStorage extends DatabaseStorage {
     const unitPrice = parseFloat(item.unitPrice.toString());
     const discount = item.discount ? parseFloat(item.discount.toString()) : 0;
     
-    const amount = (quantity * unitPrice * (1 - discount / 100)).toString();
+    const amount = (quantity * unitPrice * (1 - (discount ?? 0) / 100)).toString();
+    updatedFields.amount = amount;
     
     // If this is from a master item, track usage
     if (item.masterItemId) {

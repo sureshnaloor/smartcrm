@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/form";
 import { CountrySelect } from "@/components/ui/country-select";
 import { CompanyProfileFormValues } from "@/types";
+import { CompanyProfile } from "@shared/schema";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -66,7 +67,7 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch company profiles
-  const { data: companyProfiles = [], isLoading: isLoadingProfiles } = useQuery({
+  const { data: companyProfiles = [], isLoading: isLoadingProfiles } = useQuery<CompanyProfile[]>({
     queryKey: ["/api/company-profiles"],
   });
 
@@ -175,7 +176,7 @@ export default function SettingsPage() {
   const handleCompanyProfileAction = (id?: number) => {
     if (id) {
       // Edit mode - find the profile and set form values
-      const profile = companyProfiles.find((p) => p.id === id);
+      const profile = companyProfiles.find((p: CompanyProfile) => p.id === id);
       if (profile) {
         companyProfileForm.reset({
           name: profile.name,
@@ -217,7 +218,7 @@ export default function SettingsPage() {
         bankRoutingNumber: "",
         bankSwiftBic: "",
         bankIban: "",
-        isDefault: companyProfiles.length === 0, // Default to true if this is the first profile
+        isDefault: (companyProfiles as CompanyProfile[]).length === 0,
       });
       setSelectedCompanyProfile(null);
     }
@@ -284,7 +285,7 @@ export default function SettingsPage() {
                         <div className="flex justify-center p-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                         </div>
-                      ) : companyProfiles.length === 0 ? (
+                      ) : (companyProfiles as CompanyProfile[]).length === 0 ? (
                         <Card>
                           <CardContent className="pt-6 pb-6 text-center">
                             <Building className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -303,7 +304,7 @@ export default function SettingsPage() {
                         </Card>
                       ) : (
                         <div className="space-y-4">
-                          {companyProfiles.map((profile) => (
+                          {(companyProfiles as CompanyProfile[]).map((profile: CompanyProfile) => (
                             <Card key={profile.id}>
                               <CardContent className="pt-6 flex justify-between items-center">
                                 <div className="flex items-start">
@@ -346,7 +347,7 @@ export default function SettingsPage() {
                                     variant="destructive"
                                     size="sm"
                                     onClick={() => setCompanyProfileToDelete(profile.id)}
-                                    disabled={profile.isDefault}
+                                    disabled={profile.isDefault ?? false}
                                   >
                                     <Trash className="h-4 w-4 mr-2" />
                                     Delete

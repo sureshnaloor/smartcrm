@@ -34,11 +34,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn, formatDate, generateInvoiceNumber } from "@/lib/utils";
 import { InvoiceFormValues } from "@/types";
-import { insertInvoiceSchema } from "@shared/schema";
+import { CompanyProfile, Client, insertInvoiceSchema } from "@shared/schema";
 
 interface InvoiceFormProps {
-  onSave: () => void;
-  initialData?: InvoiceFormValues;
+  onSave: (id: number) => void;
+  initialData?: InvoiceFormValues & { id?: number };
 }
 
 export function InvoiceForm({ onSave, initialData }: InvoiceFormProps) {
@@ -68,10 +68,19 @@ export function InvoiceForm({ onSave, initialData }: InvoiceFormProps) {
     status: z.string().default("draft"),
   });
 
+  type FormValues = z.infer<typeof formSchema>;
+
   // Setup form
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {
+    defaultValues: initialData ? {
+      ...initialData,
+      invoiceDate: initialData.invoiceDate instanceof Date ? initialData.invoiceDate : new Date(initialData.invoiceDate),
+      dueDate: initialData.dueDate ? new Date(initialData.dueDate) : undefined,
+      discount: initialData.discount?.toString(),
+      templateId: initialData.templateId || "classic",
+      status: initialData.status || "draft",
+    } : {
       invoiceNumber: generateInvoiceNumber(),
       invoiceDate: new Date(),
       country: "GB",
@@ -82,20 +91,20 @@ export function InvoiceForm({ onSave, initialData }: InvoiceFormProps) {
   });
 
   // Fetch clients
-  const { data: clients = [] } = useQuery({
+  const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 
   // Fetch company profiles
-  const { data: companyProfiles = [] } = useQuery({
+  const { data: companyProfiles = [] } = useQuery<CompanyProfile[]>({
     queryKey: ["/api/company-profiles"],
   });
 
   // Create or update invoice
   const mutation = useMutation({
-    mutationFn: async (values: z.infer<typeof formSchema>) => {
-      const method = initialData?.invoiceNumber ? "PUT" : "POST";
-      const url = initialData?.invoiceNumber
+    mutationFn: async (values: FormValues) => {
+      const method = initialData?.id ? "PUT" : "POST";
+      const url = initialData?.id
         ? `/api/invoices/${initialData.id}`
         : "/api/invoices";
 
@@ -114,9 +123,9 @@ export function InvoiceForm({ onSave, initialData }: InvoiceFormProps) {
           ? "Your invoice has been updated successfully."
           : "Your invoice has been created successfully.",
       });
-      onSave();
+      onSave(initialData?.id || 0);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Something went wrong.",
@@ -129,7 +138,7 @@ export function InvoiceForm({ onSave, initialData }: InvoiceFormProps) {
   });
 
   // Form submission handler
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
     mutation.mutate(values);
   };
@@ -196,11 +205,7 @@ export function InvoiceForm({ onSave, initialData }: InvoiceFormProps) {
                       <FormItem>
                         <FormLabel>Invoice #</FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            className="mono"
-                            placeholder="INV-2023-001"
-                          />
+                          <Input {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -210,20 +215,20 @@ export function InvoiceForm({ onSave, initialData }: InvoiceFormProps) {
                     control={form.control}
                     name="invoiceDate"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date</FormLabel>
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Invoice Date</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
-                                variant="outline"
+                                variant={"outline"}
                                 className={cn(
                                   "w-full pl-3 text-left font-normal",
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
                                 {field.value ? (
-                                  formatDate(field.value, "PPP")
+                                  formatDate(field.value)
                                 ) : (
                                   <span>Pick a date</span>
                                 )}
@@ -236,6 +241,9 @@ export function InvoiceForm({ onSave, initialData }: InvoiceFormProps) {
                               mode="single"
                               selected={field.value}
                               onSelect={field.onChange}
+                              disabled={(date) =>
+                                date > new Date() || date < new Date("1900-01-01")
+                              }
                               initialFocus
                             />
                           </PopoverContent>

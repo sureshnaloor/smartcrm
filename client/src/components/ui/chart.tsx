@@ -21,6 +21,7 @@ import {
 } from "recharts"
 
 import { cn } from "@/lib/utils"
+import type { TooltipProps } from "recharts"
 
 // Define color mappings for chart elements
 const colorMappings = {
@@ -32,6 +33,21 @@ const colorMappings = {
   info: "#06b6d4", // Cyan
   muted: "#6b7280", // Gray
 };
+
+interface ChartProps {
+  data: any[];
+  index: string;
+  categories: string[];
+  colors?: string[];
+  valueFormatter?: (value: number) => string;
+  showLegend?: boolean;
+  showYAxis?: boolean;
+  showXAxis?: boolean;
+  chartType?: "bar" | "line" | "area" | "pie";
+  stack?: boolean;
+  height?: string | number;
+  width?: string | number;
+}
 
 /**
  * Reusable Chart component that supports different chart types and data visualizations
@@ -50,26 +66,26 @@ export function Chart({
   height = "100%",
   width = "100%",
   ...props
-}) {
+}: ChartProps) {
   if (!data || data.length === 0) {
     return <div className="flex items-center justify-center h-full text-gray-400">No data available</div>;
   }
 
   // Map string color names to actual color values
-  const chartColors = colors.map(color => 
-    colorMappings[color] || color
+  const chartColors = colors.map((color: keyof typeof colorMappings | string) => 
+    colorMappings[color as keyof typeof colorMappings] || color
   );
 
   // Format the value for tooltip
-  const formatValue = (value) => {
-    if (valueFormatter) {
+  const formatValue = (value: number | undefined) => {
+    if (valueFormatter && typeof value === 'number') {
       return valueFormatter(value);
     }
     return value;
   };
 
   // Custom tooltip component
-  const CustomTooltip = ({ active, payload, label }) => {
+  const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-4 border border-gray-200 shadow-lg rounded">

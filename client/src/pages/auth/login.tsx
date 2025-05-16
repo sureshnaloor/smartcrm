@@ -44,7 +44,7 @@ export default function LoginPage() {
       await login(values.email, values.password);
       navigate("/");
     } catch (error) {
-      setAuthError(error.message || "Login failed. Please check your credentials.");
+      setAuthError(error instanceof Error ? error.message : "Login failed. Please check your credentials.");
     }
   };
 

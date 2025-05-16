@@ -3,10 +3,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLocation } from "wouter";
-import { CalendarIcon, ArrowLeft, Plus, X, Save, CloudUpload, Search } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Plus, X, Save, Search } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { CompanyItem, Document, CompanyTerm, Client, CompanyProfile } from "@shared/schema";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -122,7 +123,7 @@ export default function CreateQuotationPage() {
 
   // Filter materials and services based on search term
   const filteredCompanyItems = companyItems?.filter(
-    (item) => 
+    (item: CompanyItem) => 
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.code?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -130,14 +131,14 @@ export default function CreateQuotationPage() {
 
   // Filter terms based on search term
   const filteredCompanyTerms = companyTerms?.filter(
-    (term) => 
+    (term: CompanyTerm) => 
       term.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       term.content?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Filter documents based on search term
   const filteredDocuments = documents?.filter(
-    (doc) => 
+    (doc: Document) => 
       doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -173,7 +174,7 @@ export default function CreateQuotationPage() {
 
   // Calculate total amount
   const calculateTotal = (): { subtotal: number, total: number } => {
-    const subtotal = selectedItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    const subtotal = selectedItems.reduce((sum, item) => sum + (item.quantity * Number(item.price)), 0);
     return {
       subtotal,
       total: subtotal // Add tax calculations later
@@ -196,8 +197,8 @@ export default function CreateQuotationPage() {
       description: item.description,
       quantity: item.quantity,
       unit: item.unit,
-      unitPrice: item.unitPrice,
-      totalPrice: item.quantity * item.unitPrice,
+      unitPrice: Number(item.price),
+      totalPrice: item.quantity * Number(item.price),
       materialItemId: item.id,
     }));
 
@@ -424,7 +425,7 @@ export default function CreateQuotationPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {clients?.map(client => (
+                            {clients?.map((client: Client) => (
                               <SelectItem key={client.id} value={client.id.toString()}>
                                 {client.name}
                               </SelectItem>
@@ -452,9 +453,9 @@ export default function CreateQuotationPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {companyProfiles?.map(profile => (
+                            {companyProfiles?.map((profile: CompanyProfile) => (
                               <SelectItem key={profile.id} value={profile.id.toString()}>
-                                {profile.companyName}
+                                {profile.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -567,7 +568,7 @@ export default function CreateQuotationPage() {
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              {filteredCompanyItems.map((item) => (
+                              {filteredCompanyItems.map((item: CompanyItem) => (
                                 <div
                                   key={item.id}
                                   className="flex items-center justify-between border rounded-lg p-3"
@@ -577,9 +578,9 @@ export default function CreateQuotationPage() {
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                       <Badge variant="outline">{item.category}</Badge>
                                       <span>|</span>
-                                      <span>{item.unit}</span>
+                                      <span>{item.unitOfMeasure}</span>
                                       <span>|</span>
-                                      <span>{formatCurrency(item.unitPrice)}</span>
+                                      <span>{formatCurrency(Number(item.price))}</span>
                                     </div>
                                   </div>
                                   <Button 
@@ -670,10 +671,10 @@ export default function CreateQuotationPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              {formatCurrency(item.unitPrice)}
+                              {formatCurrency(Number(item.price))}
                             </TableCell>
                             <TableCell className="text-right">
-                              {formatCurrency(item.quantity * item.unitPrice)}
+                              {formatCurrency(item.quantity * Number(item.price))}
                             </TableCell>
                             <TableCell>
                               <Button
@@ -757,7 +758,7 @@ export default function CreateQuotationPage() {
                             </div>
                           ) : (
                             <div className="space-y-4">
-                              {filteredCompanyTerms.map((term) => (
+                              {filteredCompanyTerms.map((term: CompanyTerm) => (
                                 <div
                                   key={term.id}
                                   className="border rounded-lg p-4"
@@ -891,7 +892,7 @@ export default function CreateQuotationPage() {
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              {filteredDocuments.map((doc) => (
+                              {filteredDocuments.map((doc: Document) => (
                                 <div
                                   key={doc.id}
                                   className="flex items-center justify-between border rounded-lg p-3"

@@ -44,6 +44,7 @@ import {
   FileText,
   Loader2,
 } from "lucide-react";
+import type { Invoice, CompanyProfile, Client, InvoiceItem } from "../../../../shared/schema";
 
 interface InvoiceDetailsPageProps {
   id: string;
@@ -62,25 +63,25 @@ export default function InvoiceDetailsPage({ id }: InvoiceDetailsPageProps) {
   const invoiceId = parseInt(id);
 
   // Fetch invoice
-  const { data: invoice, isLoading, error } = useQuery({
+  const { data: invoice, isLoading, error } = useQuery<Invoice>({
     queryKey: [`/api/invoices/${invoiceId}`],
     enabled: !isNaN(invoiceId),
   });
 
   // Fetch invoice items
-  const { data: invoiceItems = [] } = useQuery({
+  const { data: invoiceItems = [] } = useQuery<InvoiceItem[]>({
     queryKey: [`/api/invoices/${invoiceId}/items`],
     enabled: !isNaN(invoiceId) && !!invoice,
   });
 
   // Fetch company profile
-  const { data: companyProfile } = useQuery({
+  const { data: companyProfile } = useQuery<CompanyProfile>({
     queryKey: [`/api/company-profiles/${invoice?.companyProfileId}`],
     enabled: !!invoice?.companyProfileId,
   });
 
   // Fetch client
-  const { data: client } = useQuery({
+  const { data: client } = useQuery<Client>({
     queryKey: [`/api/clients/${invoice?.clientId}`],
     enabled: !!invoice?.clientId,
   });
@@ -202,7 +203,7 @@ export default function InvoiceDetailsPage({ id }: InvoiceDetailsPageProps) {
   }
 
   // Status color mapping
-  const statusColors = {
+  const statusColors: Record<Invoice['status'], string> = {
     draft: "bg-yellow-100 text-yellow-800",
     sent: "bg-blue-100 text-blue-800",
     paid: "bg-green-100 text-green-800",

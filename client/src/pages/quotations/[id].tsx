@@ -9,7 +9,6 @@ import {
   ClipboardCheck,
   Paperclip,
   FileText,
-  Copy,
   Send,
   Package,
   User,
@@ -31,6 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { QuotationItem, CompanyTerm, Document } from "@shared/schema";
 
 interface QuotationDetailsPageProps {
   id: string;
@@ -192,26 +192,21 @@ export default function QuotationDetailsPage({ id }: QuotationDetailsPageProps) 
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {items.map((item) => (
+                    {items.map((item: QuotationItem) => (
                       <TableRow key={item.id}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{item.name}</div>
-                            {item.description && (
-                              <div className="text-sm text-muted-foreground line-clamp-2">
-                                {item.description}
-                              </div>
-                            )}
+                            <div className="font-medium">{item.description}</div>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          {item.quantity} {item.unit}
+                          {item.quantity}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(item.unitPrice)}
+                          {formatCurrency(Number(item.unitPrice))}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(item.totalPrice)}
+                          {formatCurrency(Number(item.amount))}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -276,7 +271,7 @@ export default function QuotationDetailsPage({ id }: QuotationDetailsPageProps) 
                     </div>
                   ) : (
                     <div className="space-y-6">
-                      {terms.map((term) => (
+                      {terms.map((term: CompanyTerm) => (
                         <div key={term.id} className="border rounded-lg p-4">
                           <h3 className="text-lg font-medium mb-2">{term.title}</h3>
                           <div className="whitespace-pre-wrap text-sm">
@@ -314,7 +309,7 @@ export default function QuotationDetailsPage({ id }: QuotationDetailsPageProps) 
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {documents.map((doc) => (
+                      {documents.map((doc: Document) => (
                         <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center">
                             <div className="p-2 mr-2 bg-muted rounded">
@@ -328,7 +323,7 @@ export default function QuotationDetailsPage({ id }: QuotationDetailsPageProps) 
                             </div>
                           </div>
                           <Button variant="ghost" size="icon" asChild>
-                            <a href={`/api/documents/${doc.documentId}/download`} target="_blank" rel="noopener noreferrer">
+                            <a href={`/api/documents/${doc.id}/download`} target="_blank" rel="noopener noreferrer">
                               <Download className="h-4 w-4" />
                             </a>
                           </Button>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Invoice, InvoiceItem, CompanyProfile } from "../../../../shared/schema";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -20,6 +21,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 export default function CreateInvoicePage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { subscriptionStatus } = useSubscription();
   const [currentStep, setCurrentStep] = useState(1);
   const [invoiceId, setInvoiceId] = useState<number | null>(null);
@@ -33,19 +35,19 @@ export default function CreateInvoicePage() {
     subscriptionStatus.invoicesUsed >= subscriptionStatus.invoiceQuota;
 
   // Fetch created invoice
-  const { data: invoice } = useQuery({
+  const { data: invoice } = useQuery<Invoice>({
     queryKey: [`/api/invoices/${invoiceId}`],
     enabled: !!invoiceId,
   });
 
   // Fetch invoice items
-  const { data: invoiceItems = [] } = useQuery({
+  const { data: invoiceItems = [] } = useQuery<InvoiceItem[]>({
     queryKey: [`/api/invoices/${invoiceId}/items`],
     enabled: !!invoiceId,
   });
 
   // Get company profile
-  const { data: companyProfile } = useQuery({
+  const { data: companyProfile } = useQuery<CompanyProfile>({
     queryKey: ["/api/company-profiles", invoice?.companyProfileId],
     enabled: !!invoice?.companyProfileId,
   });
@@ -56,12 +58,8 @@ export default function CreateInvoicePage() {
   };
 
   const handleInvoiceItemsChange = () => {
-    // Refresh invoice data to update totals
     if (invoiceId) {
-      const queryClient = window['queryClient' as any];
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: [`/api/invoices/${invoiceId}`] });
-      }
+      queryClient.invalidateQueries({ queryKey: [`/api/invoices/${invoiceId}`] });
     }
   };
 

@@ -13,7 +13,8 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { InvoiceItem, InvoiceItemFormValues } from "@/types";
+import { InvoiceItem} from "@shared/schema";
+import { InvoiceItemFormValues } from "@/types";
 import { formatCurrency, getCurrencyByCode } from "@/lib/utils";
 
 interface InvoiceItemTableProps {

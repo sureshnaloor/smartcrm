@@ -51,7 +51,7 @@ export default function RegisterPage() {
       await register(values.email, values.fullName, values.password);
       navigate("/");
     } catch (error) {
-      setAuthError(error.message || "Registration failed. Please try again.");
+      setAuthError(error instanceof Error ? error.message : "Registration failed. Please try again.");
     }
   };
 

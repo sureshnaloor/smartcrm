@@ -85,17 +85,7 @@ app.use((req, res, next) => {
     console.log(`Server successfully started on port ${port}`);
   })
   .on('error', (err) => {
-    // console.log(`Server failed to start. Error details:`);
-    // console.log(`- Code: ${err.code}`);
-    // console.log(`- Message: ${err.message}`);
-    // console.log(`- Stack: ${err.stack}`);
-    // if (err.code === 'EADDRINUSE') {
-    //   console.log(`Port ${port} is already in use`);
-    // }
-    //  else if (err.code === 'EACCES') {
-    //   console.log(`Permission denied for port ${port}`);
-    // } 
-  
+    console.error('Error starting server:', err);
     console.log(err); // log the error object to co
   });
 })();

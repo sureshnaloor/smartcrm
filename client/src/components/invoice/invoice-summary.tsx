@@ -32,7 +32,7 @@ export function InvoiceSummary({
   const total = subtotal - discount + tax;
 
   // Fetch tax rates for the selected country
-  const { data: taxRates = [] } = useQuery({
+  const { data: taxRates = [] } = useQuery<TaxRate[]>({
     queryKey: [`/api/tax-rates/${invoice.country}`],
     enabled: !!invoice.country,
   });

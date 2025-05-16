@@ -22,11 +22,23 @@ import {
   CreditCard,
   Banknote,
 } from "lucide-react";
+import type { Invoice } from "../../../shared/schema";
+
+interface Client {
+  id: number;
+  name: string;
+  country?: string;
+}
+
+interface ChartData {
+  name: string;
+  revenue: number;
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [recentInvoices, setRecentInvoices] = useState([]);
+  const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([]);
   const [invoiceStats, setInvoiceStats] = useState({
     total: 0,
     paid: 0,
@@ -35,12 +47,12 @@ export default function Dashboard() {
   });
 
   // Fetch invoices
-  const { data: invoices = [] } = useQuery({
+  const { data: invoices = [] } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
   });
 
   // Fetch clients
-  const { data: clients = [] } = useQuery({
+  const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 
@@ -51,7 +63,8 @@ export default function Dashboard() {
       const sorted = [...invoices].sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-      setRecentInvoices(sorted.slice(0, 5));
+      const typedRecentInvoices: Invoice[] = sorted.slice(0, 5);
+      setRecentInvoices(typedRecentInvoices);
 
       // Calculate statistics
       const stats = {
@@ -186,12 +199,12 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="h-80">
-                      <Chart 
+                      <Chart
                         data={getMonthlyData()}
                         index="name"
                         categories={["revenue"]}
                         colors={["primary"]}
-                        valueFormatter={(value) => formatCurrency(value, "USD")}
+                        valueFormatter={(value: number) => formatCurrency(value, "USD")}
                         showLegend={false}
                       />
                     </div>
