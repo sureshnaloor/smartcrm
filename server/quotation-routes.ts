@@ -15,6 +15,9 @@ import { fromZodError } from "zod-validation-error";
 import path from "path";
 import fs from "fs";
 import session from "express-session";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
+import { quotations } from "./../shared/schema";
 
 // Setup multer for file uploads
 const upload = multer({ 
@@ -1130,29 +1133,59 @@ export function registerQuotationRoutes(app: Express): void {
       await pdfGenerator.generatePdf(
         // Convert quotation to invoice format for PDF generator
         {
-          ...quotation,
           id: quotation.id,
+          userId: quotation.userId,
+          companyProfileId: quotation.companyProfileId,
+          clientId: quotation.clientId,
+          quotationId: quotation.id,
           invoiceNumber: quotation.quoteNumber,
           invoiceDate: quotation.quoteDate,
           dueDate: quotation.validUntil,
+          country: quotation.country,
+          currency: quotation.currency,
+          templateId: quotation.templateId,
+          subtotal: quotation.subtotal,
+          discount: quotation.discount,
+          tax: quotation.tax,
+          taxRate: quotation.taxRate,
+          total: quotation.total,
+          notes: quotation.notes,
+          terms: quotation.terms,
+          status: 'draft',
+          pdfUrl: null,
+          createdAt: quotation.createdAt,
+          updatedAt: quotation.updatedAt
         },
         companyProfile,
         client,
-        items,
-        template,
-        pdfPath,
-        true // isQuotation flag
+        items.map(item => ({
+          ...item,
+          invoiceId: quotation.id,
+          quotationItemId: item.id
+        })),
+        template
       );
       
+      // Create document record
+      const document = await storage.createDocument({
+        userId,
+        name: `quotation_${quotationId}.pdf`,
+        type: 'quotation',
+        filePath: pdfPath,
+        fileSize: fs.statSync(pdfPath).size,
+        mimeType: 'application/pdf'
+      });
+
       // Update quotation with PDF URL
-      const pdfUrl = `/uploads/pdfs/${filename}`;
-      const updatedQuotation = await storage.updateQuotation(quotationId, { pdfUrl });
+      const pdfUrl = `/api/documents/${document.id}/download`;
+      const [updatedQuotation] = await db
+        .update(quotations)
+        .set({ pdf_url: pdfUrl as string })
+        .where(eq(quotations.id, quotation.id))
+        .returning();
       
       // Return the updated quotation
-      res.json({
-        ...updatedQuotation,
-        pdfUrl
-      });
+      res.json(updatedQuotation);
     } catch (error) {
       res.status(500).json({ message: error.message });
     }

@@ -39,7 +39,7 @@ const authenticate = async (req: Request & { session?: session.Session & { userI
 };
 
 // Check user's invoice quota
-const checkInvoiceQuota = async (userId: number, res: Response): Promise<boolean> => {
+export const checkInvoiceQuota = async (userId: number, res: Response): Promise<boolean> => {
   const user = await storage.getUserById(userId);
   if (!user) {
     res.status(401).json({ message: "Unauthorized" });

@@ -105,9 +105,9 @@ export class QuotationStorage extends DatabaseStorage {
         description: item.description,
         category: item.category,
         unitOfMeasure: item.unitOfMeasure,
-        code: item.code,
-        defaultPrice: item.defaultPrice,
-        isActive: true
+        defaultPrice: item.defaultPrice ? item.defaultPrice.toString() : null,
+        isActive: true,
+        ...(item.code ? { code: item.code } : {})
       })
       .returning();
     
@@ -122,10 +122,10 @@ export class QuotationStorage extends DatabaseStorage {
         description: item.description,
         category: item.category,
         unitOfMeasure: item.unitOfMeasure,
-        code: item.code,
-        defaultPrice: item.defaultPrice,
-        isActive: item.isActive
-      })
+        ...(item.code ? { code: item.code } : {}),
+        ...(item.defaultPrice !== undefined ? { defaultPrice: item.defaultPrice } : {}),
+        ...(item.isActive !== undefined ? { isActive: item.isActive } : {})
+      } satisfies Partial<typeof masterItems.$inferInsert>)
       .where(eq(masterItems.id, id))
       .returning();
     
@@ -486,12 +486,19 @@ export class QuotationStorage extends DatabaseStorage {
   }
   
   async updateQuotation(id: number, quotation: Partial<InsertQuotation>): Promise<Quotation> {
+    const updateData: Partial<typeof quotations.$inferInsert> = {
+      ...quotation,
+      updatedAt: new Date(),
+    };
+
+    // Handle pdfUrl separately since it's omitted from insertQuotationSchema
+    if ('pdfUrl' in quotation) {
+      updateData.pdfUrl = quotation.pdfUrl as string;
+    }
+
     const [updatedQuote] = await db
       .update(quotations)
-      .set({
-        ...quotation,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(quotations.id, id))
       .returning();
     
