@@ -35,8 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { InvoiceWithRelations} from "@/types";
-import { Invoice, Client } from "@shared/schema";
+import { Invoice, Client, InvoiceStatus } from "@shared/schema";
 
 export default function InvoicesPage() {
   const [, navigate] = useLocation();
@@ -46,7 +45,7 @@ export default function InvoicesPage() {
   const [invoiceToDelete, setInvoiceToDelete] = useState<number | null>(null);
 
   // Fetch invoices
-  const { data: invoices = [], isLoading } = useQuery<InvoiceWithRelations[]>({
+  const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
   });
 
@@ -85,7 +84,7 @@ export default function InvoicesPage() {
   // Filter invoices based on search query
   const filteredInvoices = searchQuery.trim() === ""
     ? invoices
-    : invoices.filter((invoice: InvoiceWithRelations) => {
+    : invoices.filter((invoice: Invoice) => {
         const searchTerms = searchQuery.toLowerCase();
         const client = clients.find(c => c.id === invoice.clientId);
         
@@ -154,7 +153,7 @@ export default function InvoicesPage() {
                         {
                           header: "Client",
                           accessorKey: "clientId",
-                          cell: (item) => {
+                          cell: (item: Invoice) => {
                             const client = clients.find(c => c.id === item.clientId);
                             return client?.name || "Unknown";
                           }
@@ -162,22 +161,22 @@ export default function InvoicesPage() {
                         {
                           header: "Date",
                           accessorKey: "invoiceDate",
-                          cell: (item) => formatDate(item.invoiceDate, "PP")
+                          cell: (item: Invoice) => formatDate(item.invoiceDate, "PP")
                         },
                         {
                           header: "Due Date",
                           accessorKey: "dueDate",
-                          cell: (item) => item.dueDate ? formatDate(item.dueDate, "PP") : "N/A"
+                          cell: (item: Invoice) => item.dueDate ? formatDate(item.dueDate, "PP") : "N/A"
                         },
                         {
                           header: "Amount",
                           accessorKey: "total",
-                          cell: (item) => formatCurrency(item.total, item.currency)
+                          cell: (item: Invoice) => formatCurrency(item.total, item.currency)
                         },
                         {
                           header: "Status",
                           accessorKey: "status",
-                          cell: (item) => (
+                          cell: (item: Invoice) => (
                             <span className={`text-xs py-1 px-2 rounded-full ${
                               item.status === "paid" ? "bg-green-100 text-green-800" :
                               item.status === "overdue" ? "bg-red-100 text-red-800" :
