@@ -63,6 +63,8 @@ export const companyProfiles = pgTable("company_profiles", {
 
 export const insertCompanyProfileSchema = createInsertSchema(companyProfiles).omit({
   id: true,
+}).extend({
+  userId: z.number()
 });
 
 // Clients table
@@ -102,6 +104,10 @@ export const masterItems = pgTable("master_items", {
 export const insertMasterItemSchema = createInsertSchema(masterItems).omit({
   id: true,
   createdAt: true,
+}).extend({
+  code: z.string().optional(),
+  defaultPrice: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
 });
 
 // Company specific materials and services
@@ -140,6 +146,8 @@ export const masterTerms = pgTable("master_terms", {
 export const insertMasterTermSchema = createInsertSchema(masterTerms).omit({
   id: true,
   createdAt: true,
+}).extend({
+  isActive: z.boolean().optional(),
 });
 
 // Company specific terms and conditions
@@ -227,7 +235,15 @@ export const quotationItems = pgTable("quotation_items", {
 
 export const insertQuotationItemSchema = createInsertSchema(quotationItems).omit({
   id: true,
-  amount: true,
+}).extend({
+  discount: z.string().optional(),
+  quotationId: z.number(),
+  description: z.string(),
+  quantity: z.string(),
+  unitPrice: z.string(),
+  amount: z.string().optional(),
+  companyItemId: z.number().optional(),
+  masterItemId: z.number().optional()
 });
 
 // Quotation document attachments

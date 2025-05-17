@@ -2,6 +2,10 @@
   "name": "smartcrm",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
   "workspaces": [
     "client",
     "server",
@@ -27,6 +31,7 @@
     "@types/multer": "^1.4.12",
     "@types/pdfkit": "^0.13.9",
     "@vitejs/plugin-react": "^4.4.1",
+    "cross-env": "^7.0.3",
     "typescript": "5.6.3"
   }
 }

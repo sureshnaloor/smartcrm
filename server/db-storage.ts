@@ -25,6 +25,7 @@ export class DatabaseStorage implements IStorage {
     
     const newUser = {
       ...userWithoutPassword,
+      email: userData.email,
       passwordHash,
       createdAt: new Date(),
       planId: "free",
@@ -57,14 +58,14 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set({
-        planId,
-        invoiceQuota: quota,
-        invoicesUsed: 0,
-        quoteQuota: quota,
-        quotesUsed: 0,
-        materialRecordsUsed: 0,
-        subscriptionStatus: "active" as const,
-        subscriptionExpiresAt
+        [users.planId.name]: planId,
+        [users.invoiceQuota.name]: quota,
+        [users.invoicesUsed.name]: 0,
+        [users.quoteQuota.name]: quota,
+        [users.quotesUsed.name]: 0,
+        [users.materialRecordsUsed.name]: 0,
+        [users.subscriptionStatus.name]: "active",
+        [users.subscriptionExpiresAt.name]: subscriptionExpiresAt
       })
       .where(eq(users.id, userId))
       .returning();
@@ -81,7 +82,7 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(users)
       .set({
-        invoicesUsed: currentUsage + 1
+        [users.invoicesUsed.name]: currentUsage + 1
       })
       .where(eq(users.id, userId));
   }
@@ -117,14 +118,14 @@ export class DatabaseStorage implements IStorage {
     return profile;
   }
   
-  async createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile> {
+  async createCompanyProfile(profile: InsertCompanyProfile & { userId: number }): Promise<CompanyProfile> {
     const { isDefault = false } = profile;
     
     // If this is set as default, unset any existing default profile
     if (isDefault) {
       await db
         .update(companyProfiles)
-        .set({ isDefault: false })
+        .set({ [companyProfiles.isDefault.name]: false })
         .where(
           and(
             eq(companyProfiles.userId, profile.userId),
@@ -135,7 +136,10 @@ export class DatabaseStorage implements IStorage {
     
     const [newProfile] = await db
       .insert(companyProfiles)
-      .values({ ...profile, isDefault })
+      .values({
+        name: profile.name,
+        userId: profile.userId
+      })
       .returning();
       
     return newProfile;
@@ -149,12 +153,11 @@ export class DatabaseStorage implements IStorage {
     if (profile.isDefault) {
       await db
         .update(companyProfiles)
-        .set({ isDefault: false })
+        .set({ [companyProfiles.isDefault.name]: false })
         .where(
           and(
             eq(companyProfiles.userId, existingProfile.userId),
-            eq(companyProfiles.isDefault, true),
-            ne(companyProfiles.id, id)
+            eq(companyProfiles.isDefault, true)
           )
         );
     }
@@ -199,7 +202,7 @@ export class DatabaseStorage implements IStorage {
       if (otherProfiles.length > 0) {
         await db
           .update(companyProfiles)
-          .set({ isDefault: true })
+          .set({ [companyProfiles.isDefault.name]: true })
           .where(eq(companyProfiles.id, otherProfiles[0].id));
       }
     }
@@ -227,21 +230,77 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createClient(client: InsertClient): Promise<Client> {
+    if (!client.name || !client.userId) {
+      throw new Error("Name and userId are required fields");
+    }
+    const insertData: {
+      name: string;
+      userId: number;
+      taxId?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+      email?: string;
+      phone?: string;
+      notes?: string;
+      isFromCentralRepo?: boolean;
+    } = {
+      name: client.name,
+      userId: Number(client.userId),
+    };
+    if (client.taxId !== undefined) insertData.taxId = client.taxId;
+    if (client.address !== undefined) insertData.address = client.address;
+    if (client.city !== undefined) insertData.city = client.city;
+    if (client.state !== undefined) insertData.state = client.state;
+    if (client.postalCode !== undefined) insertData.postalCode = client.postalCode;
+    if (client.country !== undefined) insertData.country = client.country;
+    if (client.email !== undefined) insertData.email = client.email;
+    if (client.phone !== undefined) insertData.phone = client.phone;
+    if (client.notes !== undefined) insertData.notes = client.notes;
+    if (client.isFromCentralRepo !== undefined) insertData.isFromCentralRepo = Boolean(client.isFromCentralRepo);
+
     const [newClient] = await db
       .insert(clients)
-      .values(client)
+      .values(insertData)
       .returning();
-      
     return newClient;
   }
-  
+
   async updateClient(id: number, client: Partial<InsertClient>): Promise<Client> {
+    const updateData: {
+      name?: string;
+      userId?: number;
+      taxId?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+      email?: string;
+      phone?: string;
+      notes?: string;
+      isFromCentralRepo?: boolean;
+    } = {};
+    if (client.name !== undefined) updateData.name = client.name;
+    if (client.userId !== undefined) updateData.userId = Number(client.userId);
+    if (client.taxId !== undefined) updateData.taxId = client.taxId;
+    if (client.address !== undefined) updateData.address = client.address;
+    if (client.city !== undefined) updateData.city = client.city;
+    if (client.state !== undefined) updateData.state = client.state;
+    if (client.postalCode !== undefined) updateData.postalCode = client.postalCode;
+    if (client.country !== undefined) updateData.country = client.country;
+    if (client.email !== undefined) updateData.email = client.email;
+    if (client.phone !== undefined) updateData.phone = client.phone;
+    if (client.notes !== undefined) updateData.notes = client.notes;
+    if (client.isFromCentralRepo !== undefined) updateData.isFromCentralRepo = Boolean(client.isFromCentralRepo);
+
     const [updatedClient] = await db
       .update(clients)
-      .set(client)
+      .set(updateData)
       .where(eq(clients.id, id))
       .returning();
-      
     return updatedClient;
   }
   
@@ -269,21 +328,75 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+    const insertData: any = {
+      userId: Number(invoice.userId),
+      country: invoice.country,
+      companyProfileId: Number(invoice.companyProfileId),
+      clientId: Number(invoice.clientId),
+      currency: invoice.currency,
+      templateId: invoice.templateId,
+      discount: invoice.discount ?? "0.00",
+      tax: invoice.tax ?? "0.00",
+      taxRate: invoice.taxRate ?? "0.00",
+      terms: invoice.terms,
+      invoiceNumber: invoice.invoiceNumber,
+      status: invoice.status ?? "draft",
+      subtotal: "0.00",
+      total: "0.00"
+    };
+
+    if (invoice.quotationId !== undefined) insertData.quotationId = Number(invoice.quotationId);
+    if (invoice.invoiceDate instanceof Date) insertData.invoiceDate = invoice.invoiceDate;
+    if (invoice.dueDate instanceof Date) insertData.dueDate = invoice.dueDate;
+    if (invoice.notes !== undefined) insertData.notes = invoice.notes;
+
     const [newInvoice] = await db
       .insert(invoices)
-      .values({
-        ...invoice,
-        subtotal: "0",
-        total: "0"
-      })
+      .values(insertData)
       .returning();
     return newInvoice as Invoice;
   }
   
   async updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice> {
+    const updateData: {
+      userId?: number;
+      country?: string;
+      companyProfileId?: number;
+      clientId?: number;
+      currency?: string;
+      templateId?: string;
+      discount?: string;
+      tax?: string;
+      taxRate?: string;
+      terms?: string;
+      status?: string;
+      quotationId?: number;
+      invoiceNumber?: string;
+      invoiceDate?: Date;
+      dueDate?: Date;
+      notes?: string;
+    } = {};
+
+    if (invoice.userId !== undefined) updateData.userId = Number(invoice.userId);
+    if (invoice.country !== undefined) updateData.country = invoice.country;
+    if (invoice.companyProfileId !== undefined) updateData.companyProfileId = Number(invoice.companyProfileId);
+    if (invoice.clientId !== undefined) updateData.clientId = Number(invoice.clientId);
+    if (invoice.currency !== undefined) updateData.currency = invoice.currency;
+    if (invoice.templateId !== undefined) updateData.templateId = invoice.templateId;
+    if (invoice.discount !== undefined) updateData.discount = String(invoice.discount);
+    if (invoice.tax !== undefined) updateData.tax = String(invoice.tax);
+    if (invoice.taxRate !== undefined) updateData.taxRate = String(invoice.taxRate);
+    if (invoice.terms !== undefined) updateData.terms = invoice.terms;
+    if (invoice.status !== undefined) updateData.status = invoice.status;
+    if (invoice.quotationId !== undefined) updateData.quotationId = Number(invoice.quotationId);
+    if (invoice.invoiceNumber !== undefined) updateData.invoiceNumber = invoice.invoiceNumber;
+    if (invoice.invoiceDate !== undefined) updateData.invoiceDate = invoice.invoiceDate instanceof Date ? invoice.invoiceDate : new Date(invoice.invoiceDate as string | number);
+    if (invoice.dueDate !== undefined) updateData.dueDate = invoice.dueDate instanceof Date ? invoice.dueDate : new Date(invoice.dueDate as string | number);
+    if (invoice.notes !== undefined) updateData.notes = invoice.notes;
+
     const [updatedInvoice] = await db
       .update(invoices)
-      .set(invoice)
+      .set(updateData)
       .where(eq(invoices.id, id))
       .returning();
       
@@ -310,21 +423,51 @@ export class DatabaseStorage implements IStorage {
     const discount = parseFloat(item.discount?.toString() || "0");
     const amount = (quantity * unitPrice * (1 - discount / 100)).toFixed(2);
 
+    const insertData = {
+      invoiceId: Number(item.invoiceId),
+      description: item.description,
+      quantity: String(item.quantity),
+      unitPrice: String(item.unitPrice),
+      discount: item.discount ?? "0.00",
+      quotationItemId: item.quotationItemId ? Number(item.quotationItemId) : undefined,
+      amount: amount
+    };
+
     const [newItem] = await db
       .insert(invoiceItems)
-      .values({
-        ...item,
-        amount
-      })
+      .values(insertData)
       .returning();
       
     return newItem;
   }
   
   async updateInvoiceItem(id: number, item: Partial<InsertInvoiceItem>): Promise<InvoiceItem> {
+    const updateData: {
+      description?: string;
+      quantity?: string;
+      unitPrice?: string;
+      discount?: string;
+      invoiceId?: number;
+      quotationItemId?: number;
+      amount?: string;
+    } = {};
+
+    if (item.description !== undefined) updateData.description = item.description;
+    if (item.quantity !== undefined) updateData.quantity = String(item.quantity);
+    if (item.unitPrice !== undefined) updateData.unitPrice = String(item.unitPrice);
+    if (item.discount !== undefined) updateData.discount = String(item.discount);
+    if (item.invoiceId !== undefined) updateData.invoiceId = Number(item.invoiceId);
+    if (item.quotationItemId !== undefined) updateData.quotationItemId = Number(item.quotationItemId);
+    if (item.quantity !== undefined && item.unitPrice !== undefined) {
+      const quantity = parseFloat(String(item.quantity));
+      const unitPrice = parseFloat(String(item.unitPrice));
+      const discount = parseFloat(String(item.discount || "0"));
+      updateData.amount = (quantity * unitPrice * (1 - discount / 100)).toFixed(2);
+    }
+
     const [updatedItem] = await db
       .update(invoiceItems)
-      .set(item)
+      .set(updateData)
       .where(eq(invoiceItems.id, id))
       .returning();
       
@@ -354,18 +497,53 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    const insertData = {
+      id: plan.id,
+      name: plan.name,
+      invoiceQuota: Number(plan.invoiceQuota),
+      quoteQuota: Number(plan.quoteQuota),
+      price: String(plan.price),
+      interval: plan.interval,
+      features: plan.features,
+      materialRecordsLimit: Number(plan.materialRecordsLimit),
+      includesCentralMasters: Boolean(plan.includesCentralMasters),
+      isActive: Boolean(plan.isActive)
+    };
+
     const [newPlan] = await db
       .insert(subscriptionPlans)
-      .values(plan)
+      .values(insertData)
       .returning();
       
     return newPlan;
   }
   
   async updateSubscriptionPlan(id: string, plan: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan> {
+    const updateData: {
+      name?: string;
+      invoiceQuota?: number;
+      quoteQuota?: number;
+      price?: string;
+      interval?: string;
+      features?: unknown;
+      materialRecordsLimit?: number;
+      includesCentralMasters?: boolean;
+      isActive?: boolean;
+    } = {};
+
+    if (plan.name !== undefined) updateData.name = plan.name;
+    if (plan.invoiceQuota !== undefined) updateData.invoiceQuota = Number(plan.invoiceQuota);
+    if (plan.quoteQuota !== undefined) updateData.quoteQuota = Number(plan.quoteQuota);
+    if (plan.price !== undefined) updateData.price = String(plan.price);
+    if (plan.interval !== undefined) updateData.interval = plan.interval;
+    if (plan.features !== undefined) updateData.features = plan.features;
+    if (plan.materialRecordsLimit !== undefined) updateData.materialRecordsLimit = Number(plan.materialRecordsLimit);
+    if (plan.includesCentralMasters !== undefined) updateData.includesCentralMasters = Boolean(plan.includesCentralMasters);
+    if (plan.isActive !== undefined) updateData.isActive = Boolean(plan.isActive);
+
     const [updatedPlan] = await db
       .update(subscriptionPlans)
-      .set(plan)
+      .set(updateData)
       .where(eq(subscriptionPlans.id, id))
       .returning();
       
@@ -416,18 +594,44 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createTaxRate(rate: InsertTaxRate): Promise<TaxRate> {
+    if (!rate.name || !rate.country || !rate.countryCode || !rate.rate) {
+      throw new Error("Missing required fields");
+    }
+
+    const insertData = {
+      name: rate.name,
+      country: rate.country,
+      countryCode: rate.countryCode,
+      rate: String(rate.rate),
+      isDefault: Boolean(rate.isDefault)
+    };
+
     const [newRate] = await db
       .insert(taxRates)
-      .values(rate)
+      .values(insertData)
       .returning();
       
     return newRate;
   }
   
   async updateTaxRate(id: number, rate: Partial<InsertTaxRate>): Promise<TaxRate> {
+    const updateData: {
+      name?: string;
+      country?: string;
+      countryCode?: string;
+      rate?: string;
+      isDefault?: boolean;
+    } = {};
+
+    if (rate.name !== undefined) updateData.name = rate.name;
+    if (rate.country !== undefined) updateData.country = rate.country;
+    if (rate.countryCode !== undefined) updateData.countryCode = rate.countryCode;
+    if (rate.rate !== undefined) updateData.rate = String(rate.rate);
+    if (rate.isDefault !== undefined) updateData.isDefault = Boolean(rate.isDefault);
+
     const [updatedRate] = await db
       .update(taxRates)
-      .set(rate)
+      .set(updateData)
       .where(eq(taxRates.id, id))
       .returning();
       
@@ -457,18 +661,45 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createInvoiceTemplate(template: InsertInvoiceTemplate): Promise<InvoiceTemplate> {
+    if (!template.id || !template.name) {
+      throw new Error("id and name are required fields");
+    }
+
+    const insertData = {
+      id: template.id,
+      name: template.name,
+      type: template.type,
+      isDefault: Boolean(template.isDefault),
+      previewUrl: template.previewUrl,
+      isPremium: Boolean(template.isPremium)
+    };
+
     const [newTemplate] = await db
       .insert(invoiceTemplates)
-      .values(template)
+      .values(insertData)
       .returning();
       
     return newTemplate;
   }
   
   async updateInvoiceTemplate(id: string, template: Partial<InsertInvoiceTemplate>): Promise<InvoiceTemplate> {
+    const updateData: {
+      name?: string;
+      type?: string;
+      isDefault?: boolean;
+      previewUrl?: string;
+      isPremium?: boolean;
+    } = {};
+
+    if (template.name !== undefined) updateData.name = template.name;
+    if (template.type !== undefined) updateData.type = template.type;
+    if (template.isDefault !== undefined) updateData.isDefault = Boolean(template.isDefault);
+    if (template.previewUrl !== undefined) updateData.previewUrl = template.previewUrl;
+    if (template.isPremium !== undefined) updateData.isPremium = Boolean(template.isPremium);
+
     const [updatedTemplate] = await db
       .update(invoiceTemplates)
-      .set(template)
+      .set(updateData)
       .where(eq(invoiceTemplates.id, id))
       .returning();
       

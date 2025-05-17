@@ -21,7 +21,7 @@ export interface IStorage {
   getCompanyProfiles(userId: number): Promise<CompanyProfile[]>;
   getCompanyProfile(id: number): Promise<CompanyProfile | undefined>;
   getDefaultCompanyProfile(userId: number): Promise<CompanyProfile | undefined>;
-  createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile>;
+  createCompanyProfile(profile: InsertCompanyProfile & { userId: number }): Promise<CompanyProfile>;
   updateCompanyProfile(id: number, profile: Partial<InsertCompanyProfile>): Promise<CompanyProfile>;
   deleteCompanyProfile(id: number): Promise<void>;
 

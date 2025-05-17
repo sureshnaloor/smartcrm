@@ -98,17 +98,19 @@ export class QuotationStorage extends DatabaseStorage {
       throw new Error("Missing required fields for master item");
     }
 
+    const insertData = {
+      name: item.name,
+      description: item.description,
+      category: item.category,
+      unitOfMeasure: item.unitOfMeasure,
+      defaultPrice: item.defaultPrice ? parseFloat(item.defaultPrice) : null,
+      isActive: true,
+      ...(item.code ? { code: item.code } : {})
+    };
+
     const [createdItem] = await db
       .insert(masterItems)
-      .values({
-        name: item.name,
-        description: item.description,
-        category: item.category,
-        unitOfMeasure: item.unitOfMeasure,
-        defaultPrice: item.defaultPrice ? item.defaultPrice.toString() : null,
-        isActive: true,
-        ...(item.code ? { code: item.code } : {})
-      })
+      .values(insertData)
       .returning();
     
     return createdItem;
@@ -176,6 +178,8 @@ export class QuotationStorage extends DatabaseStorage {
       throw new Error("Missing required fields for company item");
     }
 
+    const safeItem = item as InsertCompanyItem;
+
     // Check if this is from a master item, track usage
     if (item.masterItemId) {
       await this.trackMaterialUsage({
@@ -185,20 +189,18 @@ export class QuotationStorage extends DatabaseStorage {
       });
     }
     
+    const insertData = {
+      name: item.name!,
+      description: item.description!,
+      category: item.category!,
+      unitOfMeasure: item.unitOfMeasure!,
+      price: String(item.price),
+      userId: Number(item.userId),
+          } satisfies typeof companyItems.$inferInsert;
+
     const [createdItem] = await db
       .insert(companyItems)
-      .values({
-        name: item.name,
-        description: item.description,
-        category: item.category,
-        unitOfMeasure: item.unitOfMeasure,
-        price: item.price,
-        userId: item.userId,
-        masterItemId: item.masterItemId,
-        code: item.code,
-        cost: item.cost,
-        isActive: true
-      })
+      .values(insertData)
       .returning();
     
     return createdItem;
@@ -212,12 +214,8 @@ export class QuotationStorage extends DatabaseStorage {
         description: item.description,
         category: item.category,
         unitOfMeasure: item.unitOfMeasure,
-        price: item.price,
-        userId: item.userId,
-        masterItemId: item.masterItemId,
-        code: item.code,
-        cost: item.cost,
-        isActive: item.isActive
+        price: String(item.price),
+        userId: Number(item.userId),       
       })
       .where(eq(companyItems.id, id))
       .returning();
@@ -271,8 +269,7 @@ export class QuotationStorage extends DatabaseStorage {
       .values({
         category: term.category,
         title: term.title,
-        content: term.content,
-        isActive: true
+        content: term.content,        
       })
       .returning();
     
@@ -285,8 +282,7 @@ export class QuotationStorage extends DatabaseStorage {
       .set({
         category: term.category,
         title: term.title,
-        content: term.content,
-        isActive: term.isActive
+        content: term.content,        
       })
       .where(eq(masterTerms.id, id))
       .returning();
@@ -304,13 +300,17 @@ export class QuotationStorage extends DatabaseStorage {
   // Company terms methods
   // ==================
   async getCompanyTerms(userId: number, category?: string): Promise<CompanyTerm[]> {
-    let query = db
-      .select()
-      .from(companyTerms)
-      .where(eq(companyTerms.userId, userId));
-    
+    let query;
     if (category) {
-      query = query.where(eq(companyTerms.category, category));
+      query = db
+        .select()
+        .from(companyTerms)
+        .where(and(eq(companyTerms.userId, userId), eq(companyTerms.category, category)));
+    } else {
+      query = db
+        .select()
+        .from(companyTerms)
+        .where(eq(companyTerms.userId, userId));
     }
     
     const terms = await query.orderBy(desc(companyTerms.isDefault), asc(companyTerms.category), asc(companyTerms.title));
@@ -333,19 +333,19 @@ export class QuotationStorage extends DatabaseStorage {
 
     // Clear any existing default term in this category
     if (term.isDefault) {
-      await this.clearDefaultCompanyTerm(term.userId, term.category);
+      await this.clearDefaultCompanyTerm(Number(term.userId), term.category);
     }
     
     const [createdTerm] = await db
       .insert(companyTerms)
-      .values({
-        userId: term.userId,
+      .values({       
+        userId: Number(term.userId),
         category: term.category,
         title: term.title,
         content: term.content,
-        masterTermId: term.masterTermId,
-        isDefault: term.isDefault || false
-      })
+        
+        
+      } satisfies typeof companyTerms.$inferInsert)
       .returning();
     
     return createdTerm;
@@ -356,19 +356,18 @@ export class QuotationStorage extends DatabaseStorage {
     if (term.isDefault) {
       const existingTerm = await this.getCompanyTerm(id);
       if (existingTerm) {
-        await this.clearDefaultCompanyTerm(existingTerm.userId, existingTerm.category);
+        await this.clearDefaultCompanyTerm(Number(existingTerm.userId), existingTerm.category);
       }
     }
     
     const [updatedTerm] = await db
       .update(companyTerms)
       .set({
-        userId: term.userId,
+        userId: Number(term.userId),
         category: term.category,
         title: term.title,
         content: term.content,
-        masterTermId: term.masterTermId,
-        isDefault: term.isDefault
+        
       })
       .where(eq(companyTerms.id, id))
       .returning();
@@ -385,7 +384,7 @@ export class QuotationStorage extends DatabaseStorage {
   private async clearDefaultCompanyTerm(userId: number, category: string): Promise<void> {
     await db
       .update(companyTerms)
-      .set({ isDefault: false })
+      .set({ [companyTerms.isDefault.name]: false })
       .where(and(
         eq(companyTerms.userId, userId),
         eq(companyTerms.category, category),
@@ -426,7 +425,14 @@ export class QuotationStorage extends DatabaseStorage {
   async createDocument(document: InsertDocument): Promise<Document> {
     const [createdDoc] = await db
       .insert(documents)
-      .values(document)
+      .values({
+        userId: Number(document.userId),
+        name: document.name,
+        type: document.type,        
+        filePath: document.filePath,
+        fileSize: Number(document.fileSize),
+        mimeType: document.mimeType,
+      } satisfies typeof documents.$inferInsert)
       .returning();
     
     return createdDoc;
@@ -464,41 +470,34 @@ export class QuotationStorage extends DatabaseStorage {
     // Initialize values
     quotation.status = quotation.status || 'draft';
     
-    const subtotal = "0"; // Will be set by items
-    const total = "0"; // Will be set by items
-    
     const [createdQuote] = await db
       .insert(quotations)
       .values({
-        ...quotation,
-        subtotal,
-        total,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        pdfUrl: null,
-      })
+        userId: Number(quotation.userId),
+        companyProfileId: Number(quotation.companyProfileId),
+        clientId: Number(quotation.clientId),
+        quoteNumber: quotation.quoteNumber,
+        quoteDate: quotation.quoteDate instanceof Date ? quotation.quoteDate : new Date(quotation.quoteDate as string | number | Date),
+        country: quotation.country,
+        currency: quotation.currency,
+        
+        subtotal: "0",
+        total: "0"
+      } satisfies typeof quotations.$inferInsert)
       .returning();
     
     // Increment quote usage
-    await this.incrementQuoteUsage(quotation.userId);
+    await this.incrementQuoteUsage(Number(quotation.userId));
     
     return createdQuote;
   }
   
-  async updateQuotation(id: number, quotation: Partial<InsertQuotation>): Promise<Quotation> {
-    const updateData: Partial<typeof quotations.$inferInsert> = {
-      ...quotation,
-      updatedAt: new Date(),
-    };
-
-    // Handle pdfUrl separately since it's omitted from insertQuotationSchema
-    if ('pdfUrl' in quotation) {
-      updateData.pdfUrl = quotation.pdfUrl as string;
-    }
-
+  async updateQuotation(id: number, quotation: Partial<typeof quotations.$inferInsert>): Promise<Quotation> {
     const [updatedQuote] = await db
       .update(quotations)
-      .set(updateData)
+      .set({
+        ...quotation
+      })
       .where(eq(quotations.id, id))
       .returning();
     
@@ -544,7 +543,6 @@ export class QuotationStorage extends DatabaseStorage {
     const discount = item.discount ? parseFloat(item.discount.toString()) : 0;
     
     const amount = (quantity * unitPrice * (1 - (discount ?? 0) / 100)).toString();
-    updatedFields.amount = amount;
     
     // If this is from a master item, track usage
     if (item.masterItemId) {
@@ -552,13 +550,13 @@ export class QuotationStorage extends DatabaseStorage {
       const [quotation] = await db
         .select()
         .from(quotations)
-        .where(eq(quotations.id, item.quotationId));
+        .where(eq(quotations.id, Number(item.quotationId)));
       
       if (quotation) {
         await this.trackMaterialUsage({
           userId: quotation.userId,
           masterItemId: item.masterItemId,
-          quotationId: item.quotationId
+          quotationId: Number(item.quotationId)
         });
       }
     }
@@ -567,19 +565,23 @@ export class QuotationStorage extends DatabaseStorage {
     const [createdItem] = await db
       .insert(quotationItems)
       .values({
-        ...item,
+        quotationId: Number(item.quotationId),
+        description: item.description,
+        quantity: String(item.quantity),       
+        
+        unitPrice: String(item.unitPrice),
+        
         amount,
-      })
+      } satisfies typeof quotationItems.$inferInsert)
       .returning();
     
     // Recalculate quotation totals
-    await this.recalculateQuotationTotals(item.quotationId);
+    await this.recalculateQuotationTotals(Number(item.quotationId));
     
     return createdItem;
   }
   
   async updateQuotationItem(id: number, item: Partial<InsertQuotationItem>): Promise<QuotationItem> {
-    // First get the existing item
     const [existingItem] = await db
       .select()
       .from(quotationItems)
@@ -592,7 +594,9 @@ export class QuotationStorage extends DatabaseStorage {
     // Merge with updates
     const updatedFields = {
       ...item,
-    };
+      discount: item.discount ? String(item.discount) : undefined,
+      // Will be set below if needed
+    } satisfies Partial<InsertQuotationItem>;
     
     // Recalculate amount if quantity, unitPrice, or discount changes
     if (item.quantity !== undefined || item.unitPrice !== undefined || item.discount !== undefined) {
@@ -613,7 +617,7 @@ export class QuotationStorage extends DatabaseStorage {
       .returning();
     
     // Recalculate quotation totals
-    await this.recalculateQuotationTotals(existingItem.quotationId);
+    await this.recalculateQuotationTotals(Number(existingItem.quotationId));
     
     return updatedItem;
   }
@@ -655,7 +659,10 @@ export class QuotationStorage extends DatabaseStorage {
   async createQuotationDocument(doc: InsertQuotationDocument): Promise<QuotationDocument> {
     const [createdDoc] = await db
       .insert(quotationDocuments)
-      .values(doc)
+      .values({
+        quotationId: Number(doc.quotationId),
+        documentId: Number(doc.documentId),
+      } satisfies typeof quotationDocuments.$inferInsert)
       .returning();
     
     return createdDoc;
@@ -687,7 +694,7 @@ export class QuotationStorage extends DatabaseStorage {
       const [quotation] = await db
         .select()
         .from(quotations)
-        .where(eq(quotations.id, term.quotationId));
+        .where(eq(quotations.id, Number(term.quotationId)));
       
       if (quotation) {
         await this.incrementMaterialUsage(quotation.userId);
@@ -696,16 +703,31 @@ export class QuotationStorage extends DatabaseStorage {
     
     const [createdTerm] = await db
       .insert(quotationTerms)
-      .values(term)
+      .values({
+        quotationId: Number(term.quotationId),
+        category: term.category!,
+        title: term.title!,
+        content: term.content!,
+        
+        
+        
+      } satisfies typeof quotationTerms.$inferInsert)
       .returning();
     
     return createdTerm;
   }
   
   async updateQuotationTerm(id: number, term: Partial<InsertQuotationTerm>): Promise<QuotationTerm> {
+    const updateData = {
+      ...term,
+      quotationId: term.quotationId !== undefined ? Number(term.quotationId) : undefined,
+      masterTermId: term.masterTermId !== undefined ? Number(term.masterTermId) : undefined,
+      companyTermId: term.companyTermId !== undefined ? Number(term.companyTermId) : undefined,
+      sortOrder: term.sortOrder !== undefined ? Number(term.sortOrder) : undefined,
+    };
     const [updatedTerm] = await db
       .update(quotationTerms)
-      .set(term)
+      .set(updateData)
       .where(eq(quotationTerms.id, id))
       .returning();
     
@@ -723,15 +745,17 @@ export class QuotationStorage extends DatabaseStorage {
   // ==================
   async trackMaterialUsage(usage: InsertMaterialUsage): Promise<MaterialUsage> {
     // Increment the user's material usage
-    await this.incrementMaterialUsage(usage.userId);
+    await this.incrementMaterialUsage(Number(usage.userId));
     
     // Record the specific usage
     const [record] = await db
       .insert(materialUsage)
       .values({
-        ...usage,
-        usedAt: new Date()
-      })
+        userId: Number(usage.userId),
+        masterItemId: Number(usage.masterItemId),
+        
+        
+      } satisfies typeof materialUsage.$inferInsert)
       .returning();
     
     return record;
@@ -783,9 +807,9 @@ export class QuotationStorage extends DatabaseStorage {
       .update(quotations)
       .set({
         subtotal: subtotal.toString(),
-        tax: tax.toString(),
+        
         total: total.toString(),
-        updatedAt: new Date(),
+        
       })
       .where(eq(quotations.id, quotationId));
   }
@@ -801,46 +825,34 @@ export class QuotationStorage extends DatabaseStorage {
         {
           category: "Payment",
           title: "Net 30",
-          content: "Payment is due within 30 days from the invoice date.",
-          isActive: true,
-          createdAt: new Date(),
+          content: "Payment is due within 30 days from the invoice date."
         },
         {
           category: "Payment",
           title: "Net 15",
-          content: "Payment is due within 15 days from the invoice date.",
-          isActive: true,
-          createdAt: new Date(),
+          content: "Payment is due within 15 days from the invoice date."
         },
         {
           category: "Payment",
           title: "50% Advance",
-          content: "50% payment is due in advance, with the remaining balance due upon delivery.",
-          isActive: true,
-          createdAt: new Date(),
+          content: "50% payment is due in advance, with the remaining balance due upon delivery."
         },
         {
           category: "Delivery",
           title: "Standard Delivery",
-          content: "Delivery will be made within 10-15 business days from order confirmation.",
-          isActive: true,
-          createdAt: new Date(),
+          content: "Delivery will be made within 10-15 business days from order confirmation."
         },
         {
           category: "Warranty",
           title: "Standard Warranty",
-          content: "All products come with a standard 12-month warranty against manufacturing defects.",
-          isActive: true,
-          createdAt: new Date(),
+          content: "All products come with a standard 12-month warranty against manufacturing defects."
         },
         {
           category: "Refund",
           title: "No Refund Policy",
-          content: "All sales are final. No refunds will be issued once services have been rendered or products delivered.",
-          isActive: true,
-          createdAt: new Date(),
+          content: "All sales are final. No refunds will be issued once services have been rendered or products delivered."
         }
-      ])
+      ] satisfies InsertMasterTerm[])
       .onConflictDoNothing();
       
     // Seed master items
@@ -848,66 +860,84 @@ export class QuotationStorage extends DatabaseStorage {
       .insert(masterItems)
       .values([
         {
-          code: "MAT-001",
+        
           name: "Standard Steel Beam",
           description: "Standard structural steel I-beam, Grade A36",
           category: "Material",
           unitOfMeasure: "m",
-          defaultPrice: "45.00",
-          isActive: true,
-          createdAt: new Date(),
+          
+          
         },
         {
-          code: "MAT-002",
+          
           name: "Portland Cement",
           description: "General purpose Portland cement, Type I/II",
           category: "Material",
           unitOfMeasure: "kg",
-          defaultPrice: "0.15",
-          isActive: true,
-          createdAt: new Date(),
-        },
-        {
-          code: "MAT-003",
+          
+        },       {
+          
           name: "Copper Pipe",
           description: "Type L copper pipe, 3/4 inch diameter",
           category: "Material",
           unitOfMeasure: "m",
-          defaultPrice: "12.50",
-          isActive: true,
-          createdAt: new Date(),
+
         },
         {
-          code: "SRV-001",
+          
           name: "Engineering Consultation",
           description: "Professional engineering consultation services",
           category: "Service",
           unitOfMeasure: "hour",
-          defaultPrice: "85.00",
-          isActive: true,
-          createdAt: new Date(),
+
         },
         {
-          code: "SRV-002",
+          
           name: "Installation Service",
           description: "Standard installation service by certified technician",
           category: "Service",
           unitOfMeasure: "hour",
-          defaultPrice: "65.00",
-          isActive: true,
-          createdAt: new Date(),
+          
+          
         },
         {
-          code: "SRV-003",
+          
           name: "Project Management",
           description: "Project management and coordination services",
           category: "Service",
           unitOfMeasure: "day",
-          defaultPrice: "450.00",
-          isActive: true,
-          createdAt: new Date(),
+          
+          
         }
-      ])
-      .onConflictDoNothing();
+      ] as typeof masterItems.$inferInsert[])
+      .onConflictDoNothing({ target: masterItems.code });
+  }
+
+  async incrementQuoteUsage(userId: number): Promise<void> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) throw new Error("User not found");
+    
+    const currentUsage = user.quotesUsed || 0;
+    
+    await db
+      .update(users)
+      .set({
+        [users.quotesUsed.name]: currentUsage + 1
+      })
+      .where(eq(users.id, userId));
+  }
+
+  private async incrementMaterialUsage(userId: number): Promise<void> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) throw new Error("User not found");
+    
+    const currentUsage = user.materialRecordsUsed || 0;
+    
+    await db
+      .update(users)
+      .set({
+        [users.materialRecordsUsed.name]: currentUsage + 1
+      })
+      .where(eq(users.id, userId));
   }
 }

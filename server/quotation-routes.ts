@@ -8,7 +8,8 @@ import {
   insertQuotationDocumentSchema,
   insertCompanyItemSchema,
   insertCompanyTermSchema,
-  insertDocumentSchema
+  insertDocumentSchema,
+  insertClientSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -111,6 +112,11 @@ const handleValidation = <T>(schema: any, data: T): T => {
 };
 
 export function registerQuotationRoutes(app: Express): void {
+  // Health check endpoint for AWS EB monitoring
+  app.get("/api/health", (req, res) => {
+    res.status(200).json({ status: "health ok" });
+  });
+
   // Materials and Services Master routes
   app.get("/api/materials/master", async (req, res) => {
     const userId = await authenticate(req, res);
@@ -190,7 +196,7 @@ export function registerQuotationRoutes(app: Express): void {
     if (!userId) return;
     
     try {
-      const itemData = handleValidation(insertCompanyItemSchema, {
+      const itemData = insertCompanyItemSchema.parse({
         ...req.body,
         userId
       });
@@ -780,13 +786,12 @@ export function registerQuotationRoutes(app: Express): void {
       for (const item of items) {
         const itemData = handleValidation(insertQuotationItemSchema, {
           description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          discount: item.discount,
+          quantity: item.quantity !== undefined ? String(item.quantity) : "0",
+          unitPrice: item.unitPrice !== undefined ? String(item.unitPrice) : "0",
+          discount: item.discount !== undefined ? String(item.discount) : "0",
           quotationId
         });
-        
-        const createdItem = await storage.createQuotationItem(itemData);
+                const createdItem = await storage.createQuotationItem(itemData);
         createdItems.push(createdItem);
       }
       
@@ -1180,7 +1185,7 @@ export function registerQuotationRoutes(app: Express): void {
       const pdfUrl = `/api/documents/${document.id}/download`;
       const [updatedQuotation] = await db
         .update(quotations)
-        .set({ pdf_url: pdfUrl as string })
+        .set({ [quotations.pdfUrl.name]: pdfUrl as string })
         .where(eq(quotations.id, quotation.id))
         .returning();
       
@@ -1204,6 +1209,23 @@ export function registerQuotationRoutes(app: Express): void {
       res.json(clients);
     } catch (error) {
       res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.post("/api/clients", async (req, res) => {
+    const userId = await authenticate(req, res);
+    if (!userId) return;
+    
+    try {
+      const clientData = handleValidation(insertClientSchema, {
+        ...req.body,
+        userId: Number(userId), // Ensure userId is a number
+      });
+      
+      const client = await storage.createClient(clientData);
+      res.status(201).json(client);
+    } catch (error) {
+      res.status(400).json({ message: error.message });
     }
   });
 }
