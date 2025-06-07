@@ -130,7 +130,8 @@ export function registerQuotationRoutes(app: Express): void {
       const items = await storage.getMasterItems(category);
       res.json(items);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -151,7 +152,8 @@ export function registerQuotationRoutes(app: Express): void {
       
       res.json(item);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -165,7 +167,8 @@ export function registerQuotationRoutes(app: Express): void {
       const items = await storage.getCompanyItems(userId, category);
       res.json(items);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -187,7 +190,8 @@ export function registerQuotationRoutes(app: Express): void {
       
       res.json(item);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -209,7 +213,8 @@ export function registerQuotationRoutes(app: Express): void {
       const item = await storage.createCompanyItem(itemData);
       res.status(201).json(item);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -232,7 +237,8 @@ export function registerQuotationRoutes(app: Express): void {
       const updatedItem = await storage.updateCompanyItem(id, req.body);
       res.json(updatedItem);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -255,7 +261,8 @@ export function registerQuotationRoutes(app: Express): void {
       await storage.deleteCompanyItem(id);
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -272,7 +279,8 @@ export function registerQuotationRoutes(app: Express): void {
       const terms = await storage.getMasterTerms(category);
       res.json(terms);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -293,7 +301,8 @@ export function registerQuotationRoutes(app: Express): void {
       
       res.json(term);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -307,7 +316,8 @@ export function registerQuotationRoutes(app: Express): void {
       const terms = await storage.getCompanyTerms(userId, category);
       res.json(terms);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -329,7 +339,8 @@ export function registerQuotationRoutes(app: Express): void {
       
       res.json(term);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -351,7 +362,8 @@ export function registerQuotationRoutes(app: Express): void {
       const term = await storage.createCompanyTerm(termData);
       res.status(201).json(term);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -374,7 +386,8 @@ export function registerQuotationRoutes(app: Express): void {
       const updatedTerm = await storage.updateCompanyTerm(id, req.body);
       res.json(updatedTerm);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -397,7 +410,8 @@ export function registerQuotationRoutes(app: Express): void {
       await storage.deleteCompanyTerm(id);
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -411,7 +425,8 @@ export function registerQuotationRoutes(app: Express): void {
       const documents = await storage.getUserDocuments(userId, type);
       res.json(documents);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -433,7 +448,8 @@ export function registerQuotationRoutes(app: Express): void {
       
       res.json(document);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -466,7 +482,8 @@ export function registerQuotationRoutes(app: Express): void {
       const fileStream = fs.createReadStream(document.filePath);
       fileStream.pipe(res);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -504,7 +521,8 @@ export function registerQuotationRoutes(app: Express): void {
         fs.unlinkSync(req.file.path);
       }
       
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -532,7 +550,8 @@ export function registerQuotationRoutes(app: Express): void {
       await storage.deleteDocument(id);
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -545,7 +564,8 @@ export function registerQuotationRoutes(app: Express): void {
       const quotations = await storage.getQuotations(userId);
       res.json(quotations);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -567,7 +587,8 @@ export function registerQuotationRoutes(app: Express): void {
       
       res.json(quotation);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -599,7 +620,8 @@ export function registerQuotationRoutes(app: Express): void {
       
       res.status(201).json(quotation);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -622,7 +644,8 @@ export function registerQuotationRoutes(app: Express): void {
       const updatedQuotation = await storage.updateQuotation(id, req.body);
       res.json(updatedQuotation);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -645,7 +668,8 @@ export function registerQuotationRoutes(app: Express): void {
       await storage.deleteQuotation(id);
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -669,7 +693,8 @@ export function registerQuotationRoutes(app: Express): void {
       const items = await storage.getQuotationItems(quotationId);
       res.json(items);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -702,7 +727,8 @@ export function registerQuotationRoutes(app: Express): void {
       const item = await storage.createQuotationItem(itemData);
       res.status(201).json(item);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -727,7 +753,8 @@ export function registerQuotationRoutes(app: Express): void {
       const updatedItem = await storage.updateQuotationItem(itemId, req.body);
       res.json(updatedItem);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -752,7 +779,8 @@ export function registerQuotationRoutes(app: Express): void {
       await storage.deleteQuotationItem(itemId);
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -808,7 +836,8 @@ export function registerQuotationRoutes(app: Express): void {
         fs.unlinkSync(req.file.path);
       }
       
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -832,7 +861,8 @@ export function registerQuotationRoutes(app: Express): void {
       const terms = await storage.getQuotationTerms(quotationId);
       res.json(terms);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -865,7 +895,8 @@ export function registerQuotationRoutes(app: Express): void {
       const term = await storage.createQuotationTerm(termData);
       res.status(201).json(term);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -890,7 +921,8 @@ export function registerQuotationRoutes(app: Express): void {
       const updatedTerm = await storage.updateQuotationTerm(termId, req.body);
       res.json(updatedTerm);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -915,7 +947,8 @@ export function registerQuotationRoutes(app: Express): void {
       await storage.deleteQuotationTerm(termId);
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -952,7 +985,8 @@ export function registerQuotationRoutes(app: Express): void {
       
       res.json(fullDocuments);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -1000,7 +1034,8 @@ export function registerQuotationRoutes(app: Express): void {
         document
       });
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -1033,7 +1068,8 @@ export function registerQuotationRoutes(app: Express): void {
       await storage.deleteQuotationDocument(attachment.id);
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -1072,8 +1108,8 @@ export function registerQuotationRoutes(app: Express): void {
         country: quotation.country,
         currency: quotation.currency,
         templateId: quotation.templateId,
-        discount: quotation.discount,
-        taxRate: quotation.taxRate,
+        discount: quotation.discount ?? undefined,
+        taxRate: quotation.taxRate ?? undefined,
         notes: quotation.notes,
         terms: quotation.terms,
         status: 'draft'
@@ -1082,7 +1118,8 @@ export function registerQuotationRoutes(app: Express): void {
       // Return the created invoice
       res.status(201).json(invoice);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
   
@@ -1115,7 +1152,10 @@ export function registerQuotationRoutes(app: Express): void {
       }
       
       const items = await storage.getQuotationItems(quotationId);
-      
+
+      if (!quotation.templateId) {
+        return res.status(404).json({ message: "Template not found" });
+      }
       const template = await storage.getInvoiceTemplate(quotation.templateId);
       if (!template) {
         return res.status(404).json({ message: "Template not found" });
@@ -1192,7 +1232,8 @@ export function registerQuotationRoutes(app: Express): void {
       // Return the updated quotation
       res.json(updatedQuotation);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -1208,7 +1249,8 @@ export function registerQuotationRoutes(app: Express): void {
       const clients = await storage.getCentralRepoClients();
       res.json(clients);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(500).json({ message });
     }
   });
   
@@ -1225,7 +1267,8 @@ export function registerQuotationRoutes(app: Express): void {
       const client = await storage.createClient(clientData);
       res.status(201).json(client);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
+      res.status(400).json({ message });
     }
   });
 }

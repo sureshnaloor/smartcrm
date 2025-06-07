@@ -2,36 +2,30 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-// https://vitejs.dev/config/
 export default defineConfig({
+  root: 'client', // Set the client folder as the Vite root
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@shared': path.resolve(__dirname, './shared'),
-    },
-  },
-  server: {
-    port: 3000,
-    strictPort: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
+      '@': path.resolve(__dirname, 'client/src'),
+      '@shared': path.resolve(__dirname, 'shared'),
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: '../dist/client', // Output directory relative to client/
     emptyOutDir: true,
-    sourcemap: true,
-    rollupOptions: {
-      input: {
-        main: path.resolve(__dirname, 'client/index.html'),
-      },
-    },
   },
-  optimizeDeps: {
-    include: ['react', 'react-dom'],
+  server: {
+    port: 5173,
+    open: true,
+    proxy: {
+    '/api': 'http://localhost:3000', // or whatever port  backend runs on
   },
-}); 
+      cors: true, // Enable CORS for development
+      headers: {
+        'Access-Control-Allow-Origin': '*', // Allow all origins
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',    
+  },
+}
+});

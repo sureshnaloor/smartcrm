@@ -250,15 +250,15 @@ export class DatabaseStorage implements IStorage {
       name: client.name,
       userId: Number(client.userId),
     };
-    if (client.taxId !== undefined) insertData.taxId = client.taxId;
-    if (client.address !== undefined) insertData.address = client.address;
-    if (client.city !== undefined) insertData.city = client.city;
-    if (client.state !== undefined) insertData.state = client.state;
-    if (client.postalCode !== undefined) insertData.postalCode = client.postalCode;
-    if (client.country !== undefined) insertData.country = client.country;
-    if (client.email !== undefined) insertData.email = client.email;
-    if (client.phone !== undefined) insertData.phone = client.phone;
-    if (client.notes !== undefined) insertData.notes = client.notes;
+    if (client.taxId !== undefined && client.taxId !== null) insertData.taxId = client.taxId;
+    if (client.address !== undefined && client.address !== null) insertData.address = client.address;
+    if (client.city !== undefined && client.city !== null) insertData.city = client.city;
+    if (client.state !== undefined && client.state !== null) insertData.state = client.state;
+    if (client.postalCode !== undefined && client.postalCode !== null) insertData.postalCode = client.postalCode;
+    if (client.country !== undefined && client.country !== null) insertData.country = client.country;
+    if (client.email !== undefined && client.email !== null) insertData.email = client.email;
+    if (client.phone !== undefined && client.phone !== null) insertData.phone = client.phone;
+    if (client.notes !== undefined && client.notes !== null) insertData.notes = client.notes;
     if (client.isFromCentralRepo !== undefined) insertData.isFromCentralRepo = Boolean(client.isFromCentralRepo);
 
     const [newClient] = await db
@@ -285,15 +285,15 @@ export class DatabaseStorage implements IStorage {
     } = {};
     if (client.name !== undefined) updateData.name = client.name;
     if (client.userId !== undefined) updateData.userId = Number(client.userId);
-    if (client.taxId !== undefined) updateData.taxId = client.taxId;
-    if (client.address !== undefined) updateData.address = client.address;
-    if (client.city !== undefined) updateData.city = client.city;
-    if (client.state !== undefined) updateData.state = client.state;
-    if (client.postalCode !== undefined) updateData.postalCode = client.postalCode;
-    if (client.country !== undefined) updateData.country = client.country;
-    if (client.email !== undefined) updateData.email = client.email;
-    if (client.phone !== undefined) updateData.phone = client.phone;
-    if (client.notes !== undefined) updateData.notes = client.notes;
+    if (client.taxId !== undefined && client.taxId !== null) updateData.taxId = client.taxId;
+    if (client.address !== undefined && client.address !== null) updateData.address = client.address;
+    if (client.city !== undefined && client.city !== null) updateData.city = client.city;
+    if (client.state !== undefined && client.state !== null) updateData.state = client.state;
+    if (client.postalCode !== undefined && client.postalCode !== null) updateData.postalCode = client.postalCode;
+    if (client.country !== undefined && client.country !== null) updateData.country = client.country;
+    if (client.email !== undefined && client.email !== null) updateData.email = client.email;
+    if (client.phone !== undefined && client.phone !== null) updateData.phone = client.phone;
+    if (client.notes !== undefined && client.notes !== null) updateData.notes = client.notes;
     if (client.isFromCentralRepo !== undefined) updateData.isFromCentralRepo = Boolean(client.isFromCentralRepo);
 
     const [updatedClient] = await db
@@ -382,17 +382,21 @@ export class DatabaseStorage implements IStorage {
     if (invoice.companyProfileId !== undefined) updateData.companyProfileId = Number(invoice.companyProfileId);
     if (invoice.clientId !== undefined) updateData.clientId = Number(invoice.clientId);
     if (invoice.currency !== undefined) updateData.currency = invoice.currency;
-    if (invoice.templateId !== undefined) updateData.templateId = invoice.templateId;
+    if (invoice.templateId !== undefined && invoice.templateId !== null) updateData.templateId = invoice.templateId;
     if (invoice.discount !== undefined) updateData.discount = String(invoice.discount);
     if (invoice.tax !== undefined) updateData.tax = String(invoice.tax);
     if (invoice.taxRate !== undefined) updateData.taxRate = String(invoice.taxRate);
-    if (invoice.terms !== undefined) updateData.terms = invoice.terms;
+    if (invoice.terms !== undefined && invoice.terms !== null) updateData.terms = invoice.terms;
     if (invoice.status !== undefined) updateData.status = invoice.status;
     if (invoice.quotationId !== undefined) updateData.quotationId = Number(invoice.quotationId);
     if (invoice.invoiceNumber !== undefined) updateData.invoiceNumber = invoice.invoiceNumber;
     if (invoice.invoiceDate !== undefined) updateData.invoiceDate = invoice.invoiceDate instanceof Date ? invoice.invoiceDate : new Date(invoice.invoiceDate as string | number);
-    if (invoice.dueDate !== undefined) updateData.dueDate = invoice.dueDate instanceof Date ? invoice.dueDate : new Date(invoice.dueDate as string | number);
-    if (invoice.notes !== undefined) updateData.notes = invoice.notes;
+    if (invoice.dueDate !== undefined && invoice.dueDate !== null) {
+      updateData.dueDate = invoice.dueDate instanceof Date
+        ? invoice.dueDate
+        : new Date(invoice.dueDate as unknown as string | number);
+    }
+    if (invoice.notes !== undefined && invoice.notes !== null) updateData.notes = invoice.notes;
 
     const [updatedInvoice] = await db
       .update(invoices)
@@ -692,9 +696,9 @@ export class DatabaseStorage implements IStorage {
     } = {};
 
     if (template.name !== undefined) updateData.name = template.name;
-    if (template.type !== undefined) updateData.type = template.type;
+    if (template.type !== undefined && template.type !== null) updateData.type = template.type;
     if (template.isDefault !== undefined) updateData.isDefault = Boolean(template.isDefault);
-    if (template.previewUrl !== undefined) updateData.previewUrl = template.previewUrl;
+    if (template.previewUrl !== undefined && template.previewUrl !== null) updateData.previewUrl = template.previewUrl;
     if (template.isPremium !== undefined) updateData.isPremium = Boolean(template.isPremium);
 
     const [updatedTemplate] = await db

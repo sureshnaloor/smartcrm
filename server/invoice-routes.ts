@@ -7,7 +7,7 @@ import {
   insertClientSchema, 
   insertInvoiceSchema, 
   insertInvoiceItemSchema 
-} from "@shared/schema";
+} from "../shared/schema";
 import { generatePdf } from "./lib/pdf-generator";
 import multer from "multer";
 import { parseExcelFile } from "./lib/excel-parser";
@@ -122,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(userWithoutPassword);
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: (error instanceof Error ? error.message : String(error)) });
     }
   });
   
@@ -154,13 +154,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(userWithoutPassword);
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
   app.post("/api/auth/logout", (req: Request & { session?: session.Session }, res) => {
-    req.session = null;
-    res.json({ message: "Logged out successfully" });
+    if (req.session) {
+      req.session.destroy((err) => {
+        if (err) {
+          return res.status(500).json({ message: "Logout failed" });
+        }
+        res.json({ message: "Logged out successfully" });
+      });
+    } else {
+      res.json({ message: "Logged out successfully" });
+    }
   });
   
   app.get("/api/auth/me", async (req: Request & { session?: session.Session & { userId?: number } }, res: Response) => {
@@ -207,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const profile = await storage.createCompanyProfile(profileData);
       res.status(201).json(profile);
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -226,7 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedProfile = await storage.updateCompanyProfile(profileId, req.body);
       res.json(updatedProfile);
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -245,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteCompanyProfile(profileId);
       res.status(204).send();
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -289,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const client = await storage.createClient(clientData);
       res.status(201).json(client);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -311,8 +319,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updatedClient = await storage.updateClient(clientId, req.body);
       res.json(updatedClient);
-    } catch (error) {
-      res.status(400).json({ message: error.message });
+    } catch (error: any) {
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -335,7 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteClient(clientId);
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -398,7 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(invoice);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -420,8 +428,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updatedInvoice = await storage.updateInvoice(invoiceId, req.body);
       res.json(updatedInvoice);
-    } catch (error) {
-      res.status(400).json({ message: error.message });
+    } catch (error: any) {
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -443,8 +451,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       await storage.deleteInvoice(invoiceId);
       res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ message: error.message });
+    } catch (error: any) {
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -492,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const item = await storage.createInvoiceItem(itemData);
       res.status(201).json(item);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -516,8 +524,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updatedItem = await storage.updateInvoiceItem(itemId, req.body);
       res.json(updatedItem);
-    } catch (error) {
-      res.status(400).json({ message: error.message });
+    } catch (error: any) {
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -542,7 +550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteInvoiceItem(itemId);
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: (error instanceof Error ? error.message : String(error)) });
     }
   });
   
@@ -592,7 +600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fs.unlinkSync(req.file.path);
       }
       
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : String(error) });
     }
   });
   
@@ -617,8 +625,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companyProfile = await storage.getCompanyProfile(invoice.companyProfileId);
       const client = await storage.getClient(invoice.clientId);
       const items = await storage.getInvoiceItems(invoiceId);
+
+      if (!invoice.templateId) {
+        return res.status(400).json({ message: "Missing required data for PDF generation" });
+      }
       const template = await storage.getInvoiceTemplate(invoice.templateId);
-      
+
       if (!companyProfile || !client || !template) {
         return res.status(400).json({ message: "Missing required data for PDF generation" });
       }
@@ -633,7 +645,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send PDF
       res.send(pdfBuffer);
     } catch (error) {
-      res.status(500).json({ message: "Error generating PDF: " + error.message });
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ message: "Error generating PDF: " + message });
     }
   });
   
@@ -664,7 +677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = await storage.getUserById(userId);
     const hasPremiumAccess = user && user.planId !== "free";
     
-    const templates = await storage.getInvoiceTemplates(hasPremiumAccess);
+    const templates = await storage.getInvoiceTemplates(!!hasPremiumAccess);
     res.json(templates);
   });
   

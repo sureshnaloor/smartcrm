@@ -1,10 +1,14 @@
+// @ts-ignore
+require('module-alias/register');
+
 import express, { type Request, Response, NextFunction } from 'express';
 import { registerRoutes } from './invoice-routes';
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import * as schema from '@shared/schema';
+import * as schema from '../shared/schema';
 import cors from "cors";
+import path from 'path';
 
 const app = express();
 
@@ -72,6 +76,18 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Serve static files from the client build
+  // const clientBuildPath = path.resolve(__dirname, '../client/dist');
+
+  const clientBuildPath = path.resolve(__dirname, '../client');
+
+  app.use(express.static(clientBuildPath));
+
+  // For any route not handled by your API, serve index.html (for React Router)
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || 'Internal Server Error';
@@ -80,7 +96,7 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 8080;
   server.listen({
     port,
     host: '0.0.0.0',

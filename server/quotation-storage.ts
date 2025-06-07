@@ -42,7 +42,7 @@ import { DatabaseStorage } from "./db-storage";
  */
 export class QuotationStorage extends DatabaseStorage {
   // ==================
-  // Client methods
+  // Client/customer methods
   // ==================
   async getCentralRepoClients(): Promise<Client[]> {
     const result = await db
@@ -103,7 +103,7 @@ export class QuotationStorage extends DatabaseStorage {
       description: item.description,
       category: item.category,
       unitOfMeasure: item.unitOfMeasure,
-      defaultPrice: item.defaultPrice ? parseFloat(item.defaultPrice) : null,
+      defaultPrice: item.defaultPrice != null ? String(item.defaultPrice) : null,
       isActive: true,
       ...(item.code ? { code: item.code } : {})
     };
