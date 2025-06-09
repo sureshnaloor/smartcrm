@@ -4,44 +4,45 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/ui/data-table";
-import { UpgradeBanner } from "@/components/subscription/upgrade-banner";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 import { Helmet } from "react-helmet-async";
-import {
-  Plus,
+import { 
+  Plus, 
+  Search, 
+  FileText, 
+  MoreHorizontal, 
+  Eye, 
+  Edit, 
   Download,
-  FileText,
-  Eye,
-  Trash,
-  MoreHorizontal,
-  Search,
+  Trash2,
+  CalendarIcon,
+  DollarSign,
+  Users,
+  Building
 } from "lucide-react";
-import {
+import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Invoice, Client, InvoiceStatus } from "@shared/schema";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Invoice, Client } from "@shared/schema";
+import { Footer } from "@/components/layout/footer";
 
 export default function InvoicesPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [invoiceToDelete, setInvoiceToDelete] = useState<number | null>(null);
 
   // Fetch invoices
@@ -54,12 +55,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/clients"],
   });
 
-  // Download invoice PDF
-  const handleDownloadPdf = (invoiceId: number, invoiceNumber: string) => {
-    window.open(`/api/invoices/${invoiceId}/pdf`, "_blank");
-  };
-
-  // Delete invoice
+  // Delete invoice mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/invoices/${id}`);
@@ -67,25 +63,26 @@ export default function InvoicesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       toast({
-        title: "Invoice deleted",
-        description: "The invoice has been deleted successfully.",
+        title: "Success",
+        description: "Invoice deleted successfully",
+        variant: "default",
       });
       setInvoiceToDelete(null);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
-        description: error.message || "Could not delete the invoice",
+        description: "Failed to delete invoice",
         variant: "destructive",
       });
     },
   });
 
-  // Filter invoices based on search query
-  const filteredInvoices = searchQuery.trim() === ""
+  // Filter invoices based on search term
+  const filteredInvoices = searchTerm.trim() === ""
     ? invoices
     : invoices.filter((invoice: Invoice) => {
-        const searchTerms = searchQuery.toLowerCase();
+        const searchTerms = searchTerm.toLowerCase();
         const client = clients.find(c => c.id === invoice.clientId);
         
         return (
@@ -94,6 +91,14 @@ export default function InvoicesPage() {
         );
       });
 
+  // Format currency
+  const formatCurrency = (amount: number, currency: string = "USD"): string => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+    }).format(amount);
+  };
+
   return (
     <>
       <Helmet>
@@ -101,195 +106,280 @@ export default function InvoicesPage() {
         <meta name="description" content="Manage all your invoices in one place. Create, edit, and send professional invoices to your clients." />
       </Helmet>
       
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
         <Header />
-        <div className="flex-1 flex">
+        <div className="flex flex-1">
           <Sidebar className="w-64" />
-          <main className="flex-1 md:ml-64 p-6">
+          <main className="flex-1 p-8 ml-64">
             <div className="max-w-7xl mx-auto">
-              <div className="md:flex md:items-center md:justify-between mb-6">
-                <div>
-                  <h1 className="text-2xl font-semibold text-gray-900">Invoices</h1>
-                  <p className="text-gray-500">
-                    Manage and track all your invoices
-                  </p>
-                </div>
-                <div className="mt-4 flex md:mt-0 md:ml-4">
-                  <Button onClick={() => navigate("/invoices/create")}>
+              {/* Header Section with Stats */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      Invoices
+                    </h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">
+                      Manage and track your business invoices
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => navigate("/invoices/create")}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Invoice
+                    Create New
                   </Button>
                 </div>
-              </div>
 
-              <div className="bg-white rounded-lg shadow">
-                <div className="p-6">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <div className="relative w-full sm:w-64">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                      <Input
-                        placeholder="Search invoices..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-8 w-full"
-                      />
-                    </div>
-                    
-                    <UpgradeBanner minimal />
-                  </div>
-
-                  {isLoading ? (
-                    <div className="flex justify-center p-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : (
-                    <DataTable
-                      data={filteredInvoices}
-                      columns={[
-                        {
-                          header: "Invoice #",
-                          accessorKey: "invoiceNumber",
-                        },
-                        {
-                          header: "Client",
-                          accessorKey: "clientId",
-                          cell: (item: Invoice) => {
-                            const client = clients.find(c => c.id === item.clientId);
-                            return client?.name || "Unknown";
-                          }
-                        },
-                        {
-                          header: "Date",
-                          accessorKey: "invoiceDate",
-                          cell: (item: Invoice) => formatDate(item.invoiceDate, "PP")
-                        },
-                        {
-                          header: "Due Date",
-                          accessorKey: "dueDate",
-                          cell: (item: Invoice) => item.dueDate ? formatDate(item.dueDate, "PP") : "N/A"
-                        },
-                        {
-                          header: "Amount",
-                          accessorKey: "total",
-                          cell: (item: Invoice) => formatCurrency(item.total, item.currency)
-                        },
-                        {
-                          header: "Status",
-                          accessorKey: "status",
-                          cell: (item: Invoice) => (
-                            <span className={`text-xs py-1 px-2 rounded-full ${
-                              item.status === "paid" ? "bg-green-100 text-green-800" :
-                              item.status === "overdue" ? "bg-red-100 text-red-800" :
-                              item.status === "sent" ? "bg-blue-100 text-blue-800" :
-                              item.status === "cancelled" ? "bg-gray-100 text-gray-800" :
-                              "bg-yellow-100 text-yellow-800"
-                            }`}>
-                              {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                            </span>
-                          )
-                        },
-                        {
-                          header: "Actions",
-                          accessorKey: (item) => (
-                            <div className="flex justify-end">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => navigate(`/invoices/${item.id}`)}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleDownloadPdf(item.id, item.invoiceNumber)}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Download PDF
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="text-destructive"
-                                    onClick={() => setInvoiceToDelete(item.id)}
-                                  >
-                                    <Trash className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          )
-                        }
-                      ]}
-                      onRowClick={(item) => navigate(`/invoices/${item.id}`)}
-                    />
-                  )}
-
-                  {!isLoading && filteredInvoices.length === 0 && searchQuery === "" && (
-                    <div className="text-center py-12">
-                      <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No invoices</h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Get started by creating a new invoice.
-                      </p>
-                      <div className="mt-6">
-                        <Button onClick={() => navigate("/invoices/create")}>
-                          <Plus className="mr-2 h-4 w-4" />
-                          New Invoice
-                        </Button>
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Invoices</p>
+                          <h3 className="text-2xl font-bold mt-2">{invoices.length}</h3>
+                        </div>
+                        <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                          <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    </CardContent>
+                  </Card>
 
-                  {!isLoading && filteredInvoices.length === 0 && searchQuery !== "" && (
-                    <div className="text-center py-12">
-                      <Search className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No results found</h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        We couldn't find any invoices matching "{searchQuery}"
-                      </p>
-                      <div className="mt-6">
-                        <Button variant="outline" onClick={() => setSearchQuery("")}>
-                          Clear Search
-                        </Button>
+                  <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Value</p>
+                          <h3 className="text-2xl font-bold mt-2">
+                            {formatCurrency(invoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0))}
+                          </h3>
+                        </div>
+                        <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                          <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Clients</p>
+                          <h3 className="text-2xl font-bold mt-2">
+                            {new Set(invoices.map(inv => inv.clientId)).size}
+                          </h3>
+                        </div>
+                        <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                          <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
+              
+              {/* Search Bar */}
+              <div className="mb-6">
+                <div className="relative max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search invoices..."
+                    className="pl-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400 shadow-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Main Content Card */}
+              <Card className="bg-white dark:bg-gray-800 shadow-lg border-none">
+                <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+                  <CardTitle className="text-xl font-semibold">All Invoices</CardTitle>
+                  <CardDescription>
+                    View and manage your invoices
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {isLoading ? (
+                    <div className="p-6 space-y-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="flex items-center space-x-4">
+                          <Skeleton className="h-12 w-12 rounded-full" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-[250px]" />
+                            <Skeleton className="h-4 w-[200px]" />
+                          </div>
+                          <Skeleton className="ml-auto h-10 w-[120px]" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : !filteredInvoices || filteredInvoices.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 mb-4">
+                        <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <h3 className="mt-4 text-lg font-medium">No invoices found</h3>
+                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {searchTerm
+                          ? "No invoices match your search criteria."
+                          : "Get started by creating your first invoice."}
+                      </p>
+                      {!searchTerm && (
+                        <Button 
+                          onClick={() => navigate("/invoices/create")}
+                          className="mt-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create New Invoice
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 dark:border-gray-700">
+                            <th className="py-4 px-4 text-left font-medium text-gray-600 dark:text-gray-400">Invoice</th>
+                            <th className="py-4 px-4 text-left font-medium text-gray-600 dark:text-gray-400">Client</th>
+                            <th className="py-4 px-4 text-left font-medium text-gray-600 dark:text-gray-400">Date</th>
+                            <th className="py-4 px-4 text-right font-medium text-gray-600 dark:text-gray-400">Amount</th>
+                            <th className="py-4 px-4 text-right font-medium text-gray-600 dark:text-gray-400">Status</th>
+                            <th className="py-4 px-4 text-right font-medium text-gray-600 dark:text-gray-400">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredInvoices.map((invoice: Invoice) => {
+                            const client = clients.find(c => c.id === invoice.clientId);
+                            return (
+                              <tr key={invoice.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
+                                <td className="py-4 px-4">
+                                  <div className="font-medium text-gray-900 dark:text-gray-100">{invoice.invoiceNumber}</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {invoice.invoiceNumber || 'No reference number'}
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="flex items-center">
+                                    <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center mr-2">
+                                      <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                    <span className="text-gray-900 dark:text-gray-100">
+                                      {client?.name || 'No client'}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="flex items-center">
+                                    <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mr-2">
+                                      <CalendarIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <div>
+                                      <div className="text-gray-900 dark:text-gray-100">
+                                        {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "MMM d, yyyy") : "No date"}
+                                      </div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        Due: {invoice.dueDate ? format(new Date(invoice.dueDate), "MMM d, yyyy") : "N/A"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4 text-right">
+                                  <div className="flex items-center justify-end">
+                                    <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mr-2">
+                                      <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    </div>
+                                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                                      {formatCurrency(Number(invoice.total) || 0, invoice.currency)}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4 text-right">
+                                  <Badge variant={
+                                    invoice.status === "draft" ? "outline" :
+                                    invoice.status === "sent" ? "secondary" :
+                                    invoice.status === "paid" ? "default" :
+                                    invoice.status === "overdue" ? "destructive" :
+                                    "outline"
+                                  } className="px-3 py-1">
+                                    {invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1) || 'Draft'}
+                                  </Badge>
+                                </td>
+                                <td className="py-4 px-4 text-right">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                      <DropdownMenuItem asChild>
+                                        <a href={`/invoices/${invoice.id}`} className="cursor-pointer">
+                                          <Eye className="mr-2 h-4 w-4" />
+                                          View Details
+                                        </a>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem asChild>
+                                        <a href={`/invoices/${invoice.id}/edit`} className="cursor-pointer">
+                                          <Edit className="mr-2 h-4 w-4" />
+                                          Edit
+                                        </a>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem asChild>
+                                        <a href={`/api/invoices/${invoice.id}/pdf`} target="_blank" rel="noopener noreferrer" className="cursor-pointer">
+                                          <Download className="mr-2 h-4 w-4" />
+                                          Download PDF
+                                        </a>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer text-red-600 dark:text-red-400">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              This will permanently delete the invoice. This action cannot be undone.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction
+                                              onClick={() => deleteMutation.mutate(invoice.id)}
+                                              className="bg-red-600 text-white hover:bg-red-700"
+                                            >
+                                              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </main>
         </div>
         <Footer />
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={invoiceToDelete !== null} onOpenChange={() => setInvoiceToDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Invoice</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this invoice? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInvoiceToDelete(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (invoiceToDelete) {
-                  deleteMutation.mutate(invoiceToDelete);
-                }
-              }}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <UpgradeBanner />
     </>
   );
 }

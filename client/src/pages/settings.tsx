@@ -26,7 +26,10 @@ import {
   Edit, 
   Trash, 
   Check,
-  Save
+  Save,
+  FileText,
+  Shield,
+  Clock
 } from "lucide-react";
 import {
   Card,
@@ -238,33 +241,100 @@ export default function SettingsPage() {
         <meta name="description" content="Manage your InvoiceFlow account settings, company profiles, and subscription details." />
       </Helmet>
       
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
         <Header />
-        <div className="flex-1 flex">
+        <div className="flex flex-1">
           <Sidebar className="w-64" />
-          <main className="flex-1 md:ml-64 p-6">
+          <main className="flex-1 p-8 ml-64">
             <div className="max-w-7xl mx-auto">
-              <div className="md:flex md:items-center md:justify-between mb-6">
-                <div>
-                  <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
-                  <p className="text-gray-500">
-                    Manage your account, company profiles, and preferences
-                  </p>
-                </div>
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Settings
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">
+                  Manage your account, company profiles, and preferences
+                </p>
               </div>
 
-              <div className="bg-white rounded-lg shadow">
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Profiles</p>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                          {companyProfiles.length}
+                        </h3>
+                      </div>
+                      <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
+                        <Building className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Default Profile</p>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                          {companyProfiles.filter((p: CompanyProfile) => p.isDefault).length}
+                        </h3>
+                      </div>
+                      <div className="h-12 w-12 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center">
+                        <Check className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Account Type</p>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                          {user?.planId === "free" ? "Free" : "Pro"}
+                        </h3>
+                      </div>
+                      <div className="h-12 w-12 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center">
+                        <Shield className="h-6 w-6 text-green-600 dark:text-green-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Subscription</p>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                          {user?.subscriptionExpiresAt ? "Active" : "N/A"}
+                        </h3>
+                      </div>
+                      <div className="h-12 w-12 bg-orange-100 dark:bg-orange-900/50 rounded-full flex items-center justify-center">
+                        <Clock className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-none">
                 <Tabs defaultValue="companyProfiles" className="p-6">
-                  <TabsList className="mb-6">
-                    <TabsTrigger value="companyProfiles">
+                  <TabsList className="mb-6 bg-gray-100 dark:bg-gray-700/50">
+                    <TabsTrigger value="companyProfiles" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">
                       <Building className="h-4 w-4 mr-2" />
                       Company Profiles
                     </TabsTrigger>
-                    <TabsTrigger value="account">
+                    <TabsTrigger value="account" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">
                       <User className="h-4 w-4 mr-2" />
                       Account
                     </TabsTrigger>
-                    <TabsTrigger value="subscription">
+                    <TabsTrigger value="subscription" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">
                       <CreditCard className="h-4 w-4 mr-2" />
                       Subscription
                     </TabsTrigger>
@@ -274,7 +344,7 @@ export default function SettingsPage() {
                   <TabsContent value="companyProfiles">
                     <div className="space-y-6">
                       <div className="flex justify-between items-center">
-                        <h2 className="text-lg font-medium text-gray-900">Your Company Profiles</h2>
+                        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Your Company Profiles</h2>
                         <Button onClick={() => handleCompanyProfileAction()}>
                           <Plus className="h-4 w-4 mr-2" />
                           Add Company Profile
@@ -285,12 +355,12 @@ export default function SettingsPage() {
                         <div className="flex justify-center p-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                         </div>
-                      ) : (companyProfiles as CompanyProfile[]).length === 0 ? (
-                        <Card>
+                      ) : companyProfiles.length === 0 ? (
+                        <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
                           <CardContent className="pt-6 pb-6 text-center">
                             <Building className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                            <h3 className="text-sm font-medium text-gray-900">No company profiles</h3>
-                            <p className="text-sm text-gray-500 mt-1">
+                            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">No company profiles</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                               Get started by creating a new company profile. This information will appear on your invoices.
                             </p>
                             <Button 
@@ -305,23 +375,23 @@ export default function SettingsPage() {
                       ) : (
                         <div className="space-y-4">
                           {(companyProfiles as CompanyProfile[]).map((profile: CompanyProfile) => (
-                            <Card key={profile.id}>
+                            <Card key={profile.id} className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
                               <CardContent className="pt-6 flex justify-between items-center">
                                 <div className="flex items-start">
-                                  <div className="h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center">
-                                    <Building className="h-5 w-5 text-primary-600" />
+                                  <div className="h-10 w-10 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center">
+                                    <Building className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                                   </div>
                                   <div className="ml-4">
-                                    <h3 className="text-lg font-medium">
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                                       {profile.name}
                                       {profile.isDefault && (
-                                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-400">
                                           <Check className="h-3 w-3 mr-1" />
                                           Default
                                         </span>
                                       )}
                                     </h3>
-                                    <p className="text-sm text-gray-500">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
                                       {profile.address && (
                                         <span className="block">
                                           {profile.address}
@@ -364,38 +434,38 @@ export default function SettingsPage() {
                   {/* Account Tab */}
                   <TabsContent value="account">
                     <div className="space-y-6">
-                      <h2 className="text-lg font-medium text-gray-900">Your Account</h2>
+                      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Your Account</h2>
                       
-                      <Card>
+                      <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
                         <CardHeader>
-                          <CardTitle>Personal Information</CardTitle>
-                          <CardDescription>
+                          <CardTitle className="text-gray-900 dark:text-gray-100">Personal Information</CardTitle>
+                          <CardDescription className="text-gray-500 dark:text-gray-400">
                             Update your account information
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                              <Input value={user?.fullName || ""} readOnly className="bg-gray-50" />
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
+                              <Input value={user?.fullName || ""} readOnly className="bg-gray-50 dark:bg-gray-700/50" />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700">Email Address</label>
-                              <Input value={user?.email || ""} readOnly className="bg-gray-50" />
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
+                              <Input value={user?.email || ""} readOnly className="bg-gray-50 dark:bg-gray-700/50" />
                             </div>
                           </div>
                         </CardContent>
                       </Card>
                       
-                      <Card>
+                      <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
                         <CardHeader>
-                          <CardTitle>Password</CardTitle>
-                          <CardDescription>
+                          <CardTitle className="text-gray-900 dark:text-gray-100">Password</CardTitle>
+                          <CardDescription className="text-gray-500 dark:text-gray-400">
                             Change your password
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-sm text-gray-500 mb-4">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                             Password changes are currently not supported in this version.
                           </p>
                         </CardContent>
@@ -406,29 +476,29 @@ export default function SettingsPage() {
                   {/* Subscription Tab */}
                   <TabsContent value="subscription">
                     <div className="space-y-6">
-                      <h2 className="text-lg font-medium text-gray-900">Your Subscription</h2>
+                      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Your Subscription</h2>
                       
-                      <Card>
+                      <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
                         <CardHeader>
-                          <CardTitle>Current Plan</CardTitle>
-                          <CardDescription>
+                          <CardTitle className="text-gray-900 dark:text-gray-100">Current Plan</CardTitle>
+                          <CardDescription className="text-gray-500 dark:text-gray-400">
                             Details about your current subscription
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-4">
                             <div className="flex items-center">
-                              <div className="h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center">
-                                <CreditCard className="h-5 w-5 text-primary-600" />
+                              <div className="h-10 w-10 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center">
+                                <CreditCard className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                               </div>
                               <div className="ml-4">
-                                <h3 className="text-lg font-medium">
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                                   {user?.planId === "free" ? "Free Plan" : 
                                    user?.planId === "monthly" ? "Professional (Monthly)" :
                                    user?.planId === "yearly" ? "Professional (Yearly)" : 
                                    user?.planId === "per-invoice" ? "Pay as you go" : "Unknown Plan"}
                                 </h3>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
                                   {user?.invoiceQuota === -1 ? (
                                     "Unlimited invoices"
                                   ) : (
@@ -442,26 +512,20 @@ export default function SettingsPage() {
                                 </p>
                               </div>
                             </div>
-                            
-                            {user?.planId === "free" && (
-                              <div className="mt-4">
-                                <UpgradeBanner minimal />
-                              </div>
-                            )}
                           </div>
                         </CardContent>
                       </Card>
                       
                       {user?.planId !== "free" && (
-                        <Card>
+                        <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
                           <CardHeader>
-                            <CardTitle>Billing History</CardTitle>
-                            <CardDescription>
+                            <CardTitle className="text-gray-900 dark:text-gray-100">Billing History</CardTitle>
+                            <CardDescription className="text-gray-500 dark:text-gray-400">
                               Your recent billing transactions
                             </CardDescription>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                               Billing history is not available in this version.
                             </p>
                           </CardContent>
@@ -642,7 +706,7 @@ export default function SettingsPage() {
                 />
 
                 <div className="md:col-span-2">
-                  <h3 className="text-base font-medium text-gray-900 mb-2">Bank Details</h3>
+                  <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">Bank Details</h3>
                 </div>
 
                 <FormField

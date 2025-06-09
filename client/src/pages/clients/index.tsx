@@ -21,6 +21,11 @@ import {
   Mail,
   Phone,
   MapPin,
+  Users,
+  Globe,
+  Mail as MailIcon,
+  Building,
+  Briefcase,
 } from "lucide-react";
 import {
   Card,
@@ -107,143 +112,248 @@ export default function ClientsPage() {
         );
       });
 
+  // Calculate stats
+  const totalClients = clients.length;
+  const uniqueCountries = new Set(clients.map(client => client.country).filter(Boolean)).size;
+  const clientsWithEmail = clients.filter(client => client.email).length;
+  const businessClients = clients.filter(client => client.taxId).length;
+
   return (
     <>
       <Helmet>
         <title>Clients | InvoiceFlow</title>
-        <meta name="description" content="Manage your clients and their information for easy invoicing." />
+        <meta name="description" content="Manage your clients, track their information, and maintain your business relationships." />
       </Helmet>
       
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
         <Header />
-        <div className="flex-1 flex">
+        <div className="flex flex-1">
           <Sidebar className="w-64" />
-          <main className="flex-1 md:ml-64 p-6">
+          <main className="flex-1 p-8 ml-64">
             <div className="max-w-7xl mx-auto">
-              <div className="md:flex md:items-center md:justify-between mb-6">
-                <div>
-                  <h1 className="text-2xl font-semibold text-gray-900">Clients</h1>
-                  <p className="text-gray-500">
-                    Manage your clients and their information
-                  </p>
-                </div>
-                <div className="mt-4 flex md:mt-0 md:ml-4">
-                  <Button onClick={() => navigate("/clients/create")}>
+              {/* Header Section with Stats */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      Clients
+                    </h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">
+                      Manage and track your business clients
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => navigate("/clients/create")}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
                     <Plus className="mr-2 h-4 w-4" />
-                    Add Client
+                    Create New
                   </Button>
                 </div>
-              </div>
 
-              <div className="bg-white rounded-lg shadow">
-                <div className="p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <div className="relative w-full max-w-sm">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                      <Input
-                        placeholder="Search clients..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-8"
-                      />
-                    </div>
-                  </div>
-
-                  {isLoading ? (
-                    <div className="flex justify-center p-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : (
-                    <DataTable
-                      data={filteredClients}
-                      columns={[
-                        {
-                          header: "Name",
-                          accessorKey: "name",
-                        },
-                        {
-                          header: "Email",
-                          accessorKey: "email",
-                          cell: (item) => item.email || "N/A"
-                        },
-                        {
-                          header: "Phone",
-                          accessorKey: "phone",
-                          cell: (item) => item.phone || "N/A"
-                        },
-                        {
-                          header: "Country",
-                          accessorKey: "country",
-                          cell: (item) => item.country || "N/A"
-                        },
-                        {
-                          header: "Actions",
-                          accessorKey: (item) => (
-                            <div className="flex justify-end">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => setViewClient(item)}>
-                                    <User className="mr-2 h-4 w-4" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => navigate(`/clients/edit/${item.id}`)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="text-destructive"
-                                    onClick={() => setClientToDelete(item.id)}
-                                  >
-                                    <Trash className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          )
-                        }
-                      ]}
-                      onRowClick={(item) => setViewClient(item)}
-                    />
-                  )}
-
-                  {!isLoading && filteredClients.length === 0 && searchQuery === "" && (
-                    <div className="text-center py-12">
-                      <User className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No clients</h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Get started by creating a new client.
-                      </p>
-                      <div className="mt-6">
-                        <Button onClick={() => navigate("/clients/create")}>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Add Client
-                        </Button>
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                  <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Clients</p>
+                          <h3 className="text-2xl font-bold mt-2">{totalClients}</h3>
+                        </div>
+                        <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                          <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    </CardContent>
+                  </Card>
 
-                  {!isLoading && filteredClients.length === 0 && searchQuery !== "" && (
-                    <div className="text-center py-12">
-                      <Search className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No results found</h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        We couldn't find any clients matching "{searchQuery}"
-                      </p>
-                      <div className="mt-6">
-                        <Button variant="outline" onClick={() => setSearchQuery("")}>
-                          Clear Search
-                        </Button>
+                  <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Business Clients</p>
+                          <h3 className="text-2xl font-bold mt-2">{businessClients}</h3>
+                        </div>
+                        <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                          <Building className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Countries</p>
+                          <h3 className="text-2xl font-bold mt-2">{uniqueCountries}</h3>
+                        </div>
+                        <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                          <Globe className="h-6 w-6 text-green-600 dark:text-green-400" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 border-none">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">With Email</p>
+                          <h3 className="text-2xl font-bold mt-2">{clientsWithEmail}</h3>
+                        </div>
+                        <div className="h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
+                          <MailIcon className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
+
+              {/* Search Bar */}
+              <div className="mb-6">
+                <div className="relative max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search clients..."
+                    className="pl-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400 shadow-sm"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Main Content Card */}
+              <Card className="bg-white dark:bg-gray-800 shadow-lg border-none">
+                <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+                  <CardTitle className="text-xl font-semibold">All Clients</CardTitle>
+                  <CardDescription>
+                    View and manage your clients
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {isLoading ? (
+                    <div className="p-6 space-y-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="flex items-center space-x-4">
+                          <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                          <div className="space-y-2">
+                            <div className="h-4 w-[250px] bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                            <div className="h-4 w-[200px] bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : filteredClients.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 mb-4">
+                        <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">No clients found</h3>
+                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {searchQuery
+                          ? "No clients match your search criteria."
+                          : "Get started by creating your first client."}
+                      </p>
+                      {!searchQuery && (
+                        <Button 
+                          onClick={() => navigate("/clients/create")}
+                          className="mt-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create New Client
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 dark:border-gray-700">
+                            <th className="py-4 px-4 text-left font-medium text-gray-600 dark:text-gray-400">Client</th>
+                            <th className="py-4 px-4 text-left font-medium text-gray-600 dark:text-gray-400">Email</th>
+                            <th className="py-4 px-4 text-left font-medium text-gray-600 dark:text-gray-400">Phone</th>
+                            <th className="py-4 px-4 text-left font-medium text-gray-600 dark:text-gray-400">Country</th>
+                            <th className="py-4 px-4 text-right font-medium text-gray-600 dark:text-gray-400">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredClients.map((client) => (
+                            <tr key={client.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
+                              <td className="py-4 px-4">
+                                <div className="flex items-center">
+                                  <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center mr-2">
+                                    <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                  </div>
+                                  <div>
+                                    <div className="font-medium text-gray-900 dark:text-gray-100">{client.name}</div>
+                                    {client.taxId && (
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        Tax ID: {client.taxId}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="flex items-center">
+                                  <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                                  <span className="text-gray-900 dark:text-gray-100">
+                                    {client.email || "N/A"}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="flex items-center">
+                                  <Phone className="h-4 w-4 text-gray-400 mr-2" />
+                                  <span className="text-gray-900 dark:text-gray-100">
+                                    {client.phone || "N/A"}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="flex items-center">
+                                  <Globe className="h-4 w-4 text-gray-400 mr-2" />
+                                  <span className="text-gray-900 dark:text-gray-100">
+                                    {client.country || "N/A"}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4 text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => setViewClient(client)}>
+                                      <User className="mr-2 h-4 w-4" />
+                                      View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => navigate(`/clients/edit/${client.id}`)}>
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      className="text-destructive"
+                                      onClick={() => setClientToDelete(client.id)}
+                                    >
+                                      <Trash className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </main>
         </div>
@@ -288,12 +398,12 @@ export default function ClientsPage() {
           {viewClient && (
             <div className="space-y-4">
               <div className="flex items-center space-x-4">
-                <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
-                  <User className="h-6 w-6 text-primary-600" />
+                <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                  <User className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold">{viewClient.name}</h3>
-                  {viewClient.taxId && <p className="text-sm text-gray-500">Tax ID: {viewClient.taxId}</p>}
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{viewClient.name}</h3>
+                  {viewClient.taxId && <p className="text-sm text-gray-500 dark:text-gray-400">Tax ID: {viewClient.taxId}</p>}
                 </div>
               </div>
               
@@ -302,8 +412,8 @@ export default function ClientsPage() {
                   <div className="flex items-start">
                     <Mail className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Email</p>
-                      <p>{viewClient.email}</p>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
+                      <p className="text-gray-900 dark:text-white">{viewClient.email}</p>
                     </div>
                   </div>
                 )}
@@ -312,8 +422,8 @@ export default function ClientsPage() {
                   <div className="flex items-start">
                     <Phone className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Phone</p>
-                      <p>{viewClient.phone}</p>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</p>
+                      <p className="text-gray-900 dark:text-white">{viewClient.phone}</p>
                     </div>
                   </div>
                 )}
@@ -322,8 +432,8 @@ export default function ClientsPage() {
                   <div className="flex items-start">
                     <MapPin className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Address</p>
-                      <p>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</p>
+                      <p className="text-gray-900 dark:text-white">
                         {viewClient.address && <span className="block">{viewClient.address}</span>}
                         {(viewClient.city || viewClient.state || viewClient.postalCode) && (
                           <span className="block">
@@ -342,8 +452,8 @@ export default function ClientsPage() {
                 
                 {viewClient.notes && (
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Notes</p>
-                    <p className="text-sm">{viewClient.notes}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Notes</p>
+                    <p className="text-sm text-gray-900 dark:text-white">{viewClient.notes}</p>
                   </div>
                 )}
               </div>
@@ -352,10 +462,13 @@ export default function ClientsPage() {
                 <Button variant="outline" onClick={() => setViewClient(null)}>
                   Close
                 </Button>
-                <Button onClick={() => {
-                  setViewClient(null);
-                  navigate(`/clients/edit/${viewClient.id}`);
-                }}>
+                <Button 
+                  onClick={() => {
+                    setViewClient(null);
+                    navigate(`/clients/edit/${viewClient.id}`);
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                >
                   Edit Client
                 </Button>
               </div>

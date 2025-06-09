@@ -3,17 +3,15 @@ import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Invoice, InvoiceItem, CompanyProfile } from "../../../../shared/schema";
 import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { Sidebar } from "@/components/layout/sidebar";
 import { InvoiceForm } from "@/components/invoice/invoice-form";
 import { InvoiceItemTable } from "@/components/invoice/invoice-item-table";
 import { InvoiceSummary } from "@/components/invoice/invoice-summary";
 import { InvoiceTemplateSelector } from "@/components/invoice/invoice-template-selector";
 import { ExcelImportModal } from "@/components/invoice/excel-import-modal";
-import { UpgradeBanner } from "@/components/subscription/upgrade-banner";
 import { Button } from "@/components/ui/button";
 import { Helmet } from "react-helmet-async";
-import { FileSpreadsheet, FilePlus2, File } from "lucide-react";
+import { ArrowLeft, Eye, Save, FileSpreadsheet, File } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -27,6 +25,7 @@ export default function CreateInvoicePage() {
   const [invoiceId, setInvoiceId] = useState<number | null>(null);
   const [showExcelImportModal, setShowExcelImportModal] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
 
   // Check if user has reached their invoice quota
   const hasReachedQuota = 
@@ -65,7 +64,6 @@ export default function CreateInvoicePage() {
 
   const handleGeneratePdf = async () => {
     if (!invoiceId) return;
-    
     try {
       setIsGeneratingPdf(true);
       window.open(`/api/invoices/${invoiceId}/pdf`, "_blank");
@@ -82,7 +80,6 @@ export default function CreateInvoicePage() {
 
   const handleTemplateChange = async (templateId: string) => {
     if (!invoiceId) return;
-    
     try {
       await apiRequest("PUT", `/api/invoices/${invoiceId}`, { templateId });
       toast({
@@ -112,16 +109,17 @@ export default function CreateInvoicePage() {
         <Helmet>
           <title>Create Invoice | InvoiceFlow</title>
         </Helmet>
-        
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex flex-col">
           <Header />
-          <div className="flex-1 flex">
-            <Sidebar className="w-64" />
-            <main className="flex-1 md:ml-64 p-6">
+          <div className="flex-1 flex h-[calc(100vh-64px)]">
+            <div className="w-64 flex-shrink-0">
+              <Sidebar />
+            </div>
+            <main className="flex-1 p-8 overflow-y-auto">
               <div className="max-w-7xl mx-auto">
                 <div className="text-center py-12">
                   <div className="mx-auto h-24 w-24 rounded-full bg-yellow-100 flex items-center justify-center">
-                    <FilePlus2 className="h-12 w-12 text-yellow-600" />
+                    <FileSpreadsheet className="h-12 w-12 text-yellow-600" />
                   </div>
                   <h2 className="mt-4 text-lg font-medium text-gray-900">Invoice Quota Reached</h2>
                   <p className="mt-2 text-gray-500">
@@ -129,16 +127,13 @@ export default function CreateInvoicePage() {
                     Upgrade your plan to create more invoices.
                   </p>
                   <div className="mt-6">
-                    <UpgradeBanner minimal />
+                    {/* UpgradeBanner minimal */}
                   </div>
                 </div>
               </div>
             </main>
           </div>
-          <Footer />
         </div>
-        
-        <UpgradeBanner />
       </>
     );
   }
@@ -149,89 +144,110 @@ export default function CreateInvoicePage() {
         <title>Create Invoice | InvoiceFlow</title>
         <meta name="description" content="Create a new professional invoice with customizable templates and international tax support." />
       </Helmet>
-      
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         <Header />
-        <div className="flex-1 flex">
-          <Sidebar className="w-64" />
-          <main className="flex-1 md:ml-64 p-6">
+        <div className="flex h-[calc(100vh-64px)]">
+          <div className="w-64 flex-shrink-0">
+            <Sidebar />
+          </div>
+          <main className="flex-1 p-8 overflow-y-auto">
             <div className="max-w-7xl mx-auto">
-              <div className="md:flex md:items-center md:justify-between mb-6">
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-2xl font-semibold text-gray-900">Create New Invoice</h1>
+              {/* Header Section */}
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center space-x-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate("/invoices")}
+                    className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <div>
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      Create Invoice
+                    </h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">
+                      Create a new invoice for your client
+                    </p>
+                  </div>
                 </div>
-                <div className="mt-4 flex md:mt-0 md:ml-4 space-x-3">
-                  {currentStep > 1 && (
-                    <>
-                      <Button
-                        variant="outline"
-                        disabled={isGeneratingPdf}
-                        onClick={() => setShowExcelImportModal(true)}
-                      >
-                        <FileSpreadsheet className="mr-2 h-4 w-4" />
-                        Import Excel
-                      </Button>
-                      <Button 
-                        variant="default"
-                        disabled={isGeneratingPdf || invoiceItems.length === 0}
-                        onClick={handleGeneratePdf}
-                      >
-                        <File className="mr-2 h-4 w-4" />
-                        {isGeneratingPdf ? "Generating..." : "Generate PDF"}
-                      </Button>
-                    </>
-                  )}
+                <div className="flex items-center space-x-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setPreviewMode(!previewMode)}
+                    className="flex items-center"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    {previewMode ? "Edit Mode" : "Preview Mode"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleCompleteInvoice}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Invoice
+                  </Button>
                 </div>
               </div>
-
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="p-6">
-                  {currentStep === 1 && (
-                    <InvoiceForm 
-                      onSave={handleSaveInvoice}
-                    />
-                  )}
-
-                  {currentStep === 2 && invoiceId && invoice && (
-                    <div className="space-y-8">
-                      <h2 className="text-lg font-medium text-gray-900 mb-4">Invoice Items</h2>
-                      <InvoiceItemTable 
-                        invoiceId={invoiceId} 
-                        items={invoiceItems}
-                        currency={invoice.currency}
-                        onItemsChange={handleInvoiceItemsChange}
-                      />
-                      
-                      <InvoiceSummary 
-                        invoice={invoice}
-                        items={invoiceItems} 
-                        companyProfile={companyProfile}
-                        currency={invoice.currency}
-                      />
-                      
-                      <InvoiceTemplateSelector 
-                        selectedTemplate={invoice.templateId || "classic"}
-                        onTemplateChange={handleTemplateChange}
-                      />
-                      
-                      <div className="flex justify-center pt-4">
-                        <Button
-                          onClick={handleCompleteInvoice}
-                          disabled={invoiceItems.length === 0}
-                        >
-                          Complete Invoice
-                        </Button>
+              {/* Form and Preview */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Form */}
+                <div className={`${previewMode ? 'hidden lg:block' : ''}`}>
+                  <div className="bg-white dark:bg-gray-800 shadow-lg border-none rounded-lg p-6">
+                    {currentStep === 1 && (
+                      <InvoiceForm onSave={handleSaveInvoice} />
+                    )}
+                    {currentStep === 2 && invoiceId && invoice && (
+                      <div className="space-y-8">
+                        <h2 className="text-lg font-medium text-gray-900 mb-4">Invoice Items</h2>
+                        <InvoiceItemTable 
+                          invoiceId={invoiceId} 
+                          items={invoiceItems}
+                          currency={invoice.currency}
+                          onItemsChange={handleInvoiceItemsChange}
+                        />
+                        <InvoiceSummary 
+                          invoice={invoice}
+                          items={invoiceItems} 
+                          companyProfile={companyProfile}
+                          currency={invoice.currency}
+                        />
+                        <InvoiceTemplateSelector 
+                          selectedTemplate={invoice.templateId || "classic"}
+                          onTemplateChange={handleTemplateChange}
+                        />
+                        <div className="flex justify-center pt-4">
+                          <Button
+                            onClick={handleCompleteInvoice}
+                            disabled={invoiceItems.length === 0}
+                          >
+                            Complete Invoice
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {/* Preview */}
+                <div className={`${!previewMode ? 'hidden lg:block' : ''}`}>
+                  <div className="bg-white dark:bg-gray-800 shadow-lg border-none rounded-lg p-6">
+                    <h2 className="text-xl font-semibold mb-2">Preview</h2>
+                    <p className="text-gray-500 mb-4">See how your invoice will look</p>
+                    <div className="aspect-[1/1.414] bg-white dark:bg-gray-900 rounded-lg shadow-lg p-8 flex items-center justify-center">
+                      <div className="text-center text-gray-500 dark:text-gray-400">
+                        Preview will be available when you start filling the form
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
           </main>
         </div>
-        <Footer />
       </div>
-      
+      {/* Excel Import Modal */}
       {invoiceId && (
         <ExcelImportModal 
           invoiceId={invoiceId}
@@ -239,8 +255,6 @@ export default function CreateInvoicePage() {
           onClose={() => setShowExcelImportModal(false)}
         />
       )}
-      
-      <UpgradeBanner />
     </>
   );
 }

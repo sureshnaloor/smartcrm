@@ -1253,22 +1253,4 @@ export function registerQuotationRoutes(app: Express): void {
       res.status(500).json({ message });
     }
   });
-  
-  app.post("/api/clients", async (req, res) => {
-    const userId = await authenticate(req, res);
-    if (!userId) return;
-    
-    try {
-      const clientData = handleValidation(insertClientSchema, {
-        ...req.body,
-        userId: Number(userId), // Ensure userId is a number
-      });
-      
-      const client = await storage.createClient(clientData);
-      res.status(201).json(client);
-    } catch (error) {
-      const message = (error && typeof error === "object" && "message" in error) ? (error as any).message : String(error);
-      res.status(400).json({ message });
-    }
-  });
 }

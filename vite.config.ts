@@ -19,13 +19,17 @@ export default defineConfig({
     port: 5173,
     open: true,
     proxy: {
-    '/api': 'http://localhost:3000', // or whatever port  backend runs on
-  },
-      cors: true, // Enable CORS for development
-      headers: {
-        'Access-Control-Allow-Origin': '*', // Allow all origins
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',    
-  },
-}
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      }
+    },
+    cors: true, // Enable CORS for development
+    headers: {
+      'Access-Control-Allow-Origin': '*', // Allow all origins
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',    
+    },
+  }
 });

@@ -22,6 +22,7 @@ import {
 } from "@shared/schema";
 import { QuotationStorage } from "./quotation-storage";
 import crypto from "crypto";
+import { DatabaseStorage } from "./db-storage";
 
 // Storage interface
 export interface IStorage {
@@ -476,28 +477,24 @@ export class MemStorage implements IStorage {
   
   async createClient(client: InsertClient & { userId: number }): Promise<Client> {
     const id = this.currentClientId++;
-    const existingClient = await this.getClient(id);
-    if (!existingClient) throw new Error(`Client with ID ${id} not found`);
-    
-    const updatedClient: Client = {
-      ...existingClient,
+    const newClient: Client = {
+      id,
       ...client,
-      userId: existingClient.userId,
-      name: String(client.name ?? existingClient.name),
-      email: client.email ?? existingClient.email,
-      taxId: client.taxId ?? existingClient.taxId,
-      address: client.address ?? existingClient.address,
-      city: client.city ?? existingClient.city,
-      state: client.state ?? existingClient.state,
-      postalCode: client.postalCode ?? existingClient.postalCode,
-      country: client.country ?? existingClient.country,
-      phone: client.phone ?? existingClient.phone,
-      notes: client.notes ?? existingClient.notes,
+      name: String(client.name),
+      email: client.email ?? null,
+      taxId: client.taxId ?? null,
+      address: client.address ?? null,
+      city: client.city ?? null,
+      state: client.state ?? null,
+      postalCode: client.postalCode ?? null,
+      country: client.country ?? null,
+      phone: client.phone ?? null,
+      notes: client.notes ?? null,
       isFromCentralRepo: Boolean(client.isFromCentralRepo)
     };
     
-    this.clients.set(id, updatedClient);
-    return updatedClient;
+    this.clients.set(id, newClient);
+    return newClient;
   }
   
   async updateClient(id: number, client: Partial<InsertClient>): Promise<Client> {
@@ -918,15 +915,16 @@ export class MemStorage implements IStorage {
   async deleteTaxRate(id: number): Promise<void> {}
 }
 
-// Create and export an instance of MemStorage
-export const storage = new MemStorage();
+// Export the database storage implementation
+export const storage = new DatabaseStorage();
 
 // Initialize database with default data
 (async () => {
   try {
     await storage.seedDefaultData();
-    // Cast to unknown first to avoid type checking
-    await (storage as unknown as QuotationStorage).seedQuotationData();
+    // Create a QuotationStorage instance for seeding quotation data
+    const quotationStorage = new QuotationStorage();
+    await quotationStorage.seedQuotationData();
   } catch (err) {
     console.error("Error seeding data:", err);
   }

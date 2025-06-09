@@ -1,14 +1,24 @@
+// Load environment variables first
+import 'dotenv/config';
+
 // @ts-ignore
 require('module-alias/register');
 
 import express, { type Request, Response, NextFunction } from 'express';
 import { registerRoutes } from './invoice-routes';
-import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '../shared/schema';
 import cors from "cors";
 import path from 'path';
+import { testConnection } from './db';
+
+// Log environment variables (without sensitive data)
+console.log('Environment check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not set',
+  PORT: process.env.PORT || 8080
+});
 
 const app = express();
 
@@ -74,11 +84,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Test database connection before starting the server
+  const isConnected = await testConnection();
+  if (!isConnected) {
+    console.error('Failed to connect to the database. Please check your DATABASE_URL in .env file');
+    process.exit(1);
+  }
+
   const server = await registerRoutes(app);
 
   // Serve static files from the client build
-  // const clientBuildPath = path.resolve(__dirname, '../client/dist');
-
   const clientBuildPath = path.resolve(__dirname, '../client');
 
   app.use(express.static(clientBuildPath));

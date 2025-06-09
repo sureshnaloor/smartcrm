@@ -15,30 +15,55 @@ import {
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { hashPassword } from "./auth";
+import { Pool } from 'pg';
+
+// Create a new pool for raw queries
+const rawPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 // Postgresql Storage Implementation
 export class DatabaseStorage implements IStorage {
   // User methods
   async createUser(userData: InsertUser & { password: string }): Promise<User> {
-    const passwordHash = await hashPassword(userData.password);
-    const { password, ...userWithoutPassword } = userData;
+    console.log('Starting user creation process...');
     
-    const newUser = {
-      ...userWithoutPassword,
-      email: userData.email,
-      passwordHash,
-      createdAt: new Date(),
-      planId: "free",
-      invoiceQuota: 10,
-      invoicesUsed: 0,
-      quoteQuota: 10,
-      quotesUsed: 0,
-      materialRecordsUsed: 0,
-      subscriptionStatus: "active" as const
-    };
-    
-    const [user] = await db.insert(users).values(newUser).returning();
-    return user as User;
+    try {
+      // First check if user already exists
+      const existingUser = await db.select().from(users).where(eq(users.email, userData.email));
+      if (existingUser.length > 0) {
+        throw new Error('User already exists');
+      }
+
+      const passwordHash = await hashPassword(userData.password);
+      
+      const newUser = {
+        email: userData.email,
+        fullName: userData.fullName,
+        passwordHash,
+        createdAt: new Date(),
+        planId: "free",
+        invoiceQuota: 10,
+        invoicesUsed: 0,
+        quoteQuota: 10,
+        quotesUsed: 0,
+        materialRecordsUsed: 0,
+        subscriptionStatus: "active" as const
+      };
+      
+      console.log('Inserting user:', { ...newUser, passwordHash: '[REDACTED]' });
+      
+      const [user] = await db.insert(users).values(newUser).returning();
+      console.log('User created:', { ...user, passwordHash: '[REDACTED]' });
+      
+      return user as User;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
   }
   
   async getUserById(id: number): Promise<User | undefined> {

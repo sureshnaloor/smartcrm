@@ -3,11 +3,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLocation } from "wouter";
-import { CalendarIcon, ArrowLeft, Plus, X, Save, Search } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Plus, X, Save, Search, Eye, Clock, FileText, DollarSign, Users, Building2, FileSpreadsheet, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CompanyItem, Document, CompanyTerm, Client, CompanyProfile } from "@shared/schema";
+import { CompanyItem, Document, CompanyTerm, Client, CompanyProfile, Quotation } from "@shared/schema";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -48,6 +48,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Header } from "@/components/layout/header";
+import { Sidebar } from "@/components/layout/sidebar";
+import { DatePicker } from "@/components/ui/date-picker";
 
 // Define the schema for creating a quotation
 const createQuotationSchema = z.object({
@@ -61,11 +64,24 @@ const createQuotationSchema = z.object({
   status: z.string().default("draft"),
 });
 
-type FormValues = z.infer<typeof createQuotationSchema>;
+interface FormValues {
+  title: string;
+  status: string;
+  clientId?: number;
+  companyProfileId?: number;
+  date?: Date;
+  validUntil?: Date;
+  reference?: string;
+  notes?: string;
+  items: any[];
+  terms: any[];
+  documents: any[];
+}
 
 export default function CreateQuotationPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const [previewMode, setPreviewMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [selectedTerms, setSelectedTerms] = useState<any[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
@@ -76,6 +92,19 @@ export default function CreateQuotationPage() {
   const [termsDialogOpen, setTermsDialogOpen] = useState(false);
   const [documentsDialogOpen, setDocumentsDialogOpen] = useState(false);
   const queryClient = useQueryClient();
+  const [formData, setFormData] = useState<FormValues>({
+    title: "",
+    status: "draft",
+    clientId: undefined,
+    companyProfileId: undefined,
+    date: undefined,
+    validUntil: undefined,
+    reference: "",
+    notes: "",
+    items: [],
+    terms: [],
+    documents: []
+  });
 
   // Define the form
   const form = useForm<FormValues>({
@@ -153,7 +182,7 @@ export default function CreateQuotationPage() {
         title: "Success",
         description: "Quotation created successfully",
       });
-      navigate(`/quotations/${data.id}`);
+      navigate("/quotations");
     },
     onError: (error) => {
       toast({
@@ -181,8 +210,8 @@ export default function CreateQuotationPage() {
     };
   };
 
-  // Handle form submission
-  const onSubmit = (values: FormValues) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (selectedItems.length === 0) {
       toast({
         title: "Warning",
@@ -215,7 +244,7 @@ export default function CreateQuotationPage() {
     const { subtotal, total } = calculateTotal();
 
     const quotationData = {
-      ...values,
+      ...formData,
       items: formattedItems,
       terms: formattedTerms,
       documents: formattedDocuments,
@@ -294,705 +323,165 @@ export default function CreateQuotationPage() {
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" className="mr-2" onClick={() => navigate("/quotations")}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-3xl font-bold">Create New Quotation</h1>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <Header />
+      <div className="flex h-[calc(100vh-64px)]">
+        <div className="w-64 flex-shrink-0">
+          <Sidebar />
+        </div>
+        <main className="flex-1 p-8 overflow-y-auto">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/quotations")}
+                  className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Create Quotation
+                  </h1>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    Create a new quotation for your client
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setPreviewMode(!previewMode)}
+                  className="flex items-center"
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  {previewMode ? "Edit Mode" : "Preview Mode"}
+                </Button>
+                <Button
+                  type="submit"
+                  form="quotation-form"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Quotation
+                </Button>
+              </div>
+            </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="items">Items & Services</TabsTrigger>
-              <TabsTrigger value="terms">Terms & Conditions</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="basic" className="space-y-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Basic Information</CardTitle>
-                  <CardDescription>
-                    Enter the basic information for your quotation
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Quotation Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter quotation title" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="date"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Date</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className="w-full pl-3 text-left font-normal"
-                                >
-                                  {field.value ? (
-                                    format(field.value, "PPP")
-                                  ) : (
-                                    <span>Pick a date</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="validUntil"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Valid Until</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className="w-full pl-3 text-left font-normal"
-                                >
-                                  {field.value ? (
-                                    format(field.value, "PPP")
-                                  ) : (
-                                    <span>Pick a date</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="clientId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Client</FormLabel>
-                        <Select 
-                          onValueChange={(value) => field.onChange(parseInt(value))}
-                          value={field.value?.toString()}
-                        >
-                          <FormControl>
+            {/* Form and Preview */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Form */}
+              <div className={`${previewMode ? 'hidden lg:block' : ''}`}>
+                <form id="quotation-form" onSubmit={handleSubmit} className="space-y-6">
+                  <Card className="bg-white dark:bg-gray-800 shadow-lg border-none">
+                    <CardHeader>
+                      <CardTitle className="text-xl font-semibold">Quotation Details</CardTitle>
+                      <CardDescription>Enter the basic information for your quotation</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="quoteNumber">Quotation Number</Label>
+                          <Input
+                            id="quoteNumber"
+                            name="quoteNumber"
+                            placeholder="Q-2024-001"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="clientId">Client</Label>
+                          <Select name="clientId" required>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a client" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {clients?.map((client: Client) => (
-                              <SelectItem key={client.id} value={client.id.toString()}>
-                                {client.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="companyProfileId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Company Profile</FormLabel>
-                        <Select
-                          onValueChange={(value) => field.onChange(parseInt(value))}
-                          value={field.value?.toString()}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select your company profile" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {companyProfiles?.map((profile: CompanyProfile) => (
-                              <SelectItem key={profile.id} value={profile.id.toString()}>
-                                {profile.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="reference"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Reference Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Optional reference number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Additional notes for the quotation"
-                            className="min-h-32"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="items" className="space-y-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Items & Services</CardTitle>
-                      <CardDescription>
-                        Add materials and services to your quotation
-                      </CardDescription>
-                    </div>
-                    <Dialog open={itemsDialogOpen} onOpenChange={setItemsDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Add Items
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Add Items</DialogTitle>
-                          <DialogDescription>
-                            Select materials and services to add to your quotation
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="my-4 space-y-4">
-                          <div className="flex flex-col sm:flex-row gap-4">
-                            <div className="relative flex-grow">
-                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                placeholder="Search items..."
-                                className="pl-10"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                              />
-                            </div>
-                            <Select value={categoryFilter || ""} onValueChange={(value) => setCategoryFilter(value || null)}>
-                              <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="All Categories" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="">All Categories</SelectItem>
-                                <SelectItem value="material">Materials</SelectItem>
-                                <SelectItem value="service">Services</SelectItem>
-                                <SelectItem value="equipment">Equipment</SelectItem>
-                                <SelectItem value="labor">Labor</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          {loadingCompanyItems ? (
-                            <div className="space-y-4">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <div key={i} className="flex items-center justify-between">
-                                  <Skeleton className="h-12 w-[70%]" />
-                                  <Skeleton className="h-10 w-[100px]" />
-                                </div>
+                            <SelectContent>
+                              {clients?.map((client: any) => (
+                                <SelectItem key={client.id} value={client.id.toString()}>
+                                  {client.name}
+                                </SelectItem>
                               ))}
-                            </div>
-                          ) : !filteredCompanyItems || filteredCompanyItems.length === 0 ? (
-                            <div className="text-center py-12">
-                              <p className="text-muted-foreground">
-                                {searchTerm || categoryFilter
-                                  ? "No items match your search criteria."
-                                  : "No items available. Add materials and services to your catalog first."}
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {filteredCompanyItems.map((item: CompanyItem) => (
-                                <div
-                                  key={item.id}
-                                  className="flex items-center justify-between border rounded-lg p-3"
-                                >
-                                  <div>
-                                    <div className="font-medium">{item.name}</div>
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                      <Badge variant="outline">{item.category}</Badge>
-                                      <span>|</span>
-                                      <span>{item.unitOfMeasure}</span>
-                                      <span>|</span>
-                                      <span>{formatCurrency(Number(item.price))}</span>
-                                    </div>
-                                  </div>
-                                  <Button 
-                                    onClick={() => addItem(item)}
-                                    disabled={selectedItems.some(i => i.id === item.id)}
-                                  >
-                                    {selectedItems.some(i => i.id === item.id) ? "Added" : "Add"}
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                            </SelectContent>
+                          </Select>
                         </div>
-                        <DialogFooter>
-                          <Button 
-                            variant="outline" 
-                            onClick={() => setItemsDialogOpen(false)}
-                          >
-                            Done
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {selectedItems.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground mb-4">
-                        No items added to the quotation yet.
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => setItemsDialogOpen(true)}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Items
-                      </Button>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Item</TableHead>
-                          <TableHead>Quantity</TableHead>
-                          <TableHead className="text-right">Unit Price</TableHead>
-                          <TableHead className="text-right">Total</TableHead>
-                          <TableHead className="w-[70px]"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{item.name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {item.category} | {item.unit}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
-                                  disabled={item.quantity <= 1}
-                                >
-                                  -
-                                </Button>
-                                <Input
-                                  className="w-16 h-8 text-center"
-                                  type="number"
-                                  min="1"
-                                  value={item.quantity}
-                                  onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))}
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                                >
-                                  +
-                                </Button>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(Number(item.price))}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(item.quantity * Number(item.price))}
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeItem(item.id)}
-                                className="text-destructive"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                      <tfoot>
-                        <tr>
-                          <td colSpan={3} className="text-right font-medium p-2">Subtotal:</td>
-                          <td className="text-right p-2">{formatCurrency(calculateTotal().subtotal)}</td>
-                          <td></td>
-                        </tr>
-                        <tr>
-                          <td colSpan={3} className="text-right font-medium p-2">Total:</td>
-                          <td className="text-right p-2 text-lg font-bold">{formatCurrency(calculateTotal().total)}</td>
-                          <td></td>
-                        </tr>
-                      </tfoot>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="terms" className="space-y-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Terms & Conditions</CardTitle>
-                      <CardDescription>
-                        Add terms and conditions to your quotation
-                      </CardDescription>
-                    </div>
-                    <Dialog open={termsDialogOpen} onOpenChange={setTermsDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Add Terms
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Add Terms & Conditions</DialogTitle>
-                          <DialogDescription>
-                            Select terms and conditions to add to your quotation
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="my-4 space-y-4">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="Search terms..."
-                              className="pl-10"
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                          </div>
-                          
-                          {loadingCompanyTerms ? (
-                            <div className="space-y-4">
-                              {Array.from({ length: 3 }).map((_, i) => (
-                                <Skeleton key={i} className="h-24 w-full" />
-                              ))}
-                            </div>
-                          ) : !filteredCompanyTerms || filteredCompanyTerms.length === 0 ? (
-                            <div className="text-center py-12">
-                              <p className="text-muted-foreground">
-                                {searchTerm
-                                  ? "No terms match your search criteria."
-                                  : "No terms available. Create terms and conditions in the Terms section first."}
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              {filteredCompanyTerms.map((term: CompanyTerm) => (
-                                <div
-                                  key={term.id}
-                                  className="border rounded-lg p-4"
-                                >
-                                  <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                      <h3 className="font-medium">{term.title}</h3>
-                                      <Badge variant="outline">{term.category}</Badge>
-                                    </div>
-                                    <Button 
-                                      onClick={() => addTerm(term)}
-                                      disabled={selectedTerms.some(t => t.id === term.id)}
-                                    >
-                                      {selectedTerms.some(t => t.id === term.id) ? "Added" : "Add"}
-                                    </Button>
-                                  </div>
-                                  <div className="text-sm text-muted-foreground line-clamp-3">
-                                    {term.content}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <DialogFooter>
-                          <Button 
-                            variant="outline" 
-                            onClick={() => setTermsDialogOpen(false)}
-                          >
-                            Done
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {selectedTerms.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground mb-4">
-                        No terms and conditions added to the quotation yet.
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => setTermsDialogOpen(true)}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Terms
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {selectedTerms.map((term) => (
-                        <div key={term.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <h3 className="font-medium">{term.title}</h3>
-                              <Badge variant="outline" className="mt-1">{term.category}</Badge>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeTerm(term.id)}
-                              className="text-destructive"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <div className="text-sm mt-2 whitespace-pre-wrap">
-                            {term.content}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="documents" className="space-y-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>Documents</CardTitle>
-                      <CardDescription>
-                        Attach documents to your quotation
-                      </CardDescription>
-                    </div>
-                    <Dialog open={documentsDialogOpen} onOpenChange={setDocumentsDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Add Documents
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Add Documents</DialogTitle>
-                          <DialogDescription>
-                            Select documents to attach to your quotation
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="my-4 space-y-4">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="Search documents..."
-                              className="pl-10"
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                          </div>
-                          
-                          {loadingDocuments ? (
-                            <div className="space-y-4">
-                              {Array.from({ length: 3 }).map((_, i) => (
-                                <div key={i} className="flex items-center justify-between">
-                                  <Skeleton className="h-12 w-[70%]" />
-                                  <Skeleton className="h-10 w-[100px]" />
-                                </div>
-                              ))}
-                            </div>
-                          ) : !filteredDocuments || filteredDocuments.length === 0 ? (
-                            <div className="text-center py-12">
-                              <p className="text-muted-foreground">
-                                {searchTerm
-                                  ? "No documents match your search criteria."
-                                  : "No documents available. Upload documents in the Documents section first."}
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {filteredDocuments.map((doc: Document) => (
-                                <div
-                                  key={doc.id}
-                                  className="flex items-center justify-between border rounded-lg p-3"
-                                >
-                                  <div>
-                                    <div className="font-medium">{doc.name}</div>
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                      <Badge variant="outline">{doc.type}</Badge>
-                                      <span>|</span>
-                                      <span>{formatFileSize(doc.fileSize)}</span>
-                                    </div>
-                                  </div>
-                                  <Button 
-                                    onClick={() => addDocument(doc)}
-                                    disabled={selectedDocuments.some(d => d.id === doc.id)}
-                                  >
-                                    {selectedDocuments.some(d => d.id === doc.id) ? "Added" : "Add"}
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <DialogFooter>
-                          <Button 
-                            variant="outline" 
-                            onClick={() => setDocumentsDialogOpen(false)}
-                          >
-                            Done
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {selectedDocuments.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground mb-4">
-                        No documents attached to the quotation yet.
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => setDocumentsDialogOpen(true)}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Documents
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {selectedDocuments.map((doc) => (
-                        <div
-                          key={doc.id}
-                          className="flex items-center justify-between border rounded-lg p-3"
-                        >
-                          <div>
-                            <div className="font-medium">{doc.name}</div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Badge variant="outline">{doc.type}</Badge>
-                              <span>|</span>
-                              <span>{formatFileSize(doc.fileSize)}</span>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeDocument(doc.id)}
-                            className="text-destructive"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                      </div>
 
-          <div className="flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/quotations")}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              disabled={createQuotation.isPending}
-              className="gap-2"
-            >
-              <Save className="h-4 w-4" />
-              {createQuotation.isPending ? "Creating..." : "Create Quotation"}
-            </Button>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="date">Quotation Date</Label>
+                          <DatePicker
+                            date={formData.date}
+                            setDate={(date) => setFormData({ ...formData, date })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="validUntil">Valid Until</Label>
+                          <DatePicker
+                            date={formData.validUntil}
+                            setDate={(date) => setFormData({ ...formData, validUntil: date })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="notes">Notes</Label>
+                        <Textarea
+                          id="notes"
+                          name="notes"
+                          placeholder="Enter any additional notes or terms..."
+                          rows={4}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white dark:bg-gray-800 shadow-lg border-none">
+                    <CardHeader>
+                      <CardTitle className="text-xl font-semibold">Items</CardTitle>
+                      <CardDescription>Add items to your quotation</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Item rows will be added here */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {/* Add item row */}}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Item
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </form>
+              </div>
+
+              {/* Preview */}
+              <div className={`${!previewMode ? 'hidden lg:block' : ''}`}>
+                <Card className="bg-white dark:bg-gray-800 shadow-lg border-none">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-semibold">Preview</CardTitle>
+                    <CardDescription>See how your quotation will look</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="aspect-[1/1.414] bg-white dark:bg-gray-900 rounded-lg shadow-lg p-8">
+                      {/* Preview content will be rendered here */}
+                      <div className="text-center text-gray-500 dark:text-gray-400">
+                        Preview will be available when you start filling the form
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
-        </form>
-      </Form>
+        </main>
+      </div>
     </div>
   );
 }

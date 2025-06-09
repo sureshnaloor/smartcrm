@@ -26,13 +26,13 @@ export function Header() {
   ];
 
   return (
-    <header className="bg-white border-b border-gray-200">
+    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
+          <div className="flex items-center md:ml-64">
             <div className="flex-shrink-0 flex items-center">
               <File className="text-primary h-6 w-6 mr-2" />
-              <span className="text-xl font-semibold text-gray-900">InvoiceFlow</span>
+              <span className="text-xl font-semibold text-gray-900 dark:text-gray-100">InvoiceFlow</span>
             </div>
             <nav className="hidden md:ml-6 md:flex md:space-x-4">
               {navItems.map((item) => (
@@ -41,7 +41,7 @@ export function Header() {
                     className={`px-3 py-2 text-sm font-medium ${
                       location === item.href
                         ? "text-primary border-b-2 border-primary"
-                        : "text-gray-500 hover:text-gray-700"
+                        : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                     }`}
                   >
                     {item.label}
@@ -53,10 +53,10 @@ export function Header() {
           <div className="flex items-center space-x-4">
             {user && (
               <>
-                <button className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+                <button className="flex items-center px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
                   <Crown className="text-secondary-500 h-4 w-4 mr-2" />
                   <span>{subscriptionStatus?.planName || "Free Plan"}</span>
-                  <span className="ml-2 text-xs text-gray-400">
+                  <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
                     {subscriptionStatus?.isUnlimited 
                       ? "∞" 
                       : `${subscriptionStatus?.invoicesUsed}/${subscriptionStatus?.invoiceQuota}`}
@@ -65,15 +65,15 @@ export function Header() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger className="focus:outline-none">
-                    <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700">
+                    <div className="h-8 w-8 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center text-primary-700 dark:text-primary-400">
                       <span>{user.fullName?.charAt(0) || user.email.charAt(0)}</span>
                     </div>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                     <DropdownMenuLabel>
                       <div className="flex flex-col">
-                        <span>{user.fullName || "User"}</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-gray-900 dark:text-gray-100">{user.fullName || "User"}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {truncateText(user.email, 20)}
                         </span>
                       </div>
